@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FlatList, Pressable, ScrollView, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useShallow } from 'zustand/react/shallow'
 
 import { ChecklistItemRow } from '@/components/ui/ChecklistItemRow'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -30,7 +31,7 @@ export default function ChecklistScreen() {
   const activeListId = useMemoStore((state) => state.activeListId)
   const setActiveListId = useMemoStore((state) => state.setActiveListId)
   const hideCompleted = useSettingsStore((state) => state.hideCompleted)
-  const filteredItems = useMemoStore((state) => state.filteredItems({ hideCompleted }))
+  const filteredItems = useMemoStore(useShallow((state) => state.filteredItems({ hideCompleted })))
   const findSubtasks = useMemoStore((state) => state.findSubtasks)
   const toggleChecklistItem = useMemoStore((state) => state.toggleChecklistItem)
   const softDeleteChecklistItem = useMemoStore((state) => state.softDeleteChecklistItem)

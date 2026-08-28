@@ -40,32 +40,42 @@ const useAuthStore = create<AuthState>((set, get) => ({
 
   async signIn(data) {
     set({ isLoading: true })
-    const result = await POST_SIGNIN(data)
-    set({ isLoading: false })
-    if (result.code !== 0) {
-      return result.message
+    try {
+      const result = await POST_SIGNIN(data)
+      if (result.code !== 0) {
+        return result.message
+      }
+      set({
+        userId: result.data.id,
+        email: result.data.email,
+        token: result.data.token
+      })
+      return null
+    } catch (error) {
+      return error instanceof Error ? error.message : 'Sign in failed'
+    } finally {
+      set({ isLoading: false })
     }
-    set({
-      userId: result.data.id,
-      email: result.data.email,
-      token: result.data.token
-    })
-    return null
   },
 
   async signUp(data) {
     set({ isLoading: true })
-    const result = await POST_SIGNUP(data)
-    set({ isLoading: false })
-    if (result.code !== 0) {
-      return result.message
+    try {
+      const result = await POST_SIGNUP(data)
+      if (result.code !== 0) {
+        return result.message
+      }
+      set({
+        userId: result.data.id,
+        email: result.data.email,
+        token: result.data.token
+      })
+      return null
+    } catch (error) {
+      return error instanceof Error ? error.message : 'Sign up failed'
+    } finally {
+      set({ isLoading: false })
     }
-    set({
-      userId: result.data.id,
-      email: result.data.email,
-      token: result.data.token
-    })
-    return null
   },
 
   async signOut() {

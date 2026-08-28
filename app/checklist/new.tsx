@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Text, TextInput, View } from 'react-native'
+import { useShallow } from 'zustand/react/shallow'
 
 import { ListPicker } from '@/components/ui/ListPicker'
 import { PriorityPicker } from '@/components/ui/PriorityPicker'
@@ -22,7 +23,7 @@ export default function ChecklistFormScreen() {
   const colors = useThemeColors()
   const items = useMemoStore((state) => state.items)
   const lists = useMemoStore((state) => state.lists)
-  const tags = useMemoStore((state) => state.findTags())
+  const tags = useMemoStore(useShallow((state) => state.findTags()))
   const insertChecklistItem = useMemoStore((state) => state.insertChecklistItem)
   const updateChecklistItem = useMemoStore((state) => state.updateChecklistItem)
 
@@ -125,11 +126,17 @@ export default function ChecklistFormScreen() {
           </Text>
           <TextInput
             accessibilityLabel={t('title')}
-            className="min-h-[48px] rounded-xl border px-3 py-3 text-base"
+            className="h-12 rounded-xl border px-3 text-base"
             onChangeText={setTitle}
             placeholder={t('title')}
             placeholderTextColor={colors.textSecondary}
-            style={{ color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }}
+            style={{
+              color: colors.text,
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+              textAlignVertical: 'center',
+              paddingVertical: 0
+            }}
             value={title}
           />
         </View>

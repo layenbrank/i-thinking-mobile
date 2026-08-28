@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, FlatList, Pressable, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useShallow } from 'zustand/react/shallow'
 
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SearchBar } from '@/components/ui/SearchBar'
@@ -23,8 +24,8 @@ export default function MemosScreen() {
   const setSearchQuery = useMemoStore((state) => state.setSearchQuery)
   const activeTag = useMemoStore((state) => state.activeTag)
   const setActiveTag = useMemoStore((state) => state.setActiveTag)
-  const memos = useMemoStore((state) => state.filteredMemos())
-  const tags = useMemoStore((state) => state.findTags())
+  const memos = useMemoStore(useShallow((state) => state.filteredMemos()))
+  const tags = useMemoStore(useShallow((state) => state.findTags()))
   const insertMemo = useMemoStore((state) => state.insertMemo)
   const softDeleteMemo = useMemoStore((state) => state.softDeleteMemo)
   const restoreMemo = useMemoStore((state) => state.restoreMemo)

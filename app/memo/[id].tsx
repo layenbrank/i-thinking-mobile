@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Text, TextInput, View } from 'react-native'
+import { useShallow } from 'zustand/react/shallow'
 
 import { ChecklistItemRow } from '@/components/ui/ChecklistItemRow'
 import { TagPicker } from '@/components/ui/TagPicker'
@@ -19,7 +20,7 @@ export default function MemoDetailScreen() {
   const toggleChecklistItem = useMemoStore((state) => state.toggleChecklistItem)
   const softDeleteChecklistItem = useMemoStore((state) => state.softDeleteChecklistItem)
   const insertSubtask = useMemoStore((state) => state.insertSubtask)
-  const tags = useMemoStore((state) => state.findTags())
+  const tags = useMemoStore(useShallow((state) => state.findTags()))
 
   const memo = findMemo(id)
   const [title, setTitle] = useState(memo?.title ?? '')

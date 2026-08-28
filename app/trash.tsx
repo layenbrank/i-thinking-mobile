@@ -2,6 +2,7 @@ import { router } from 'expo-router'
 import { Trash2 } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { FlatList, Pressable, Text, View } from 'react-native'
+import { useShallow } from 'zustand/react/shallow'
 
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Screen } from '@/components/ui/Screen'
@@ -13,8 +14,12 @@ import type { ChecklistItem, Memo } from '@/types/memo'
 export default function TrashScreen() {
   const { t } = useTranslation()
   const colors = useThemeColors()
-  const memos = useMemoStore((state) => state.filteredMemos(true)).filter((memo) => memo.deletedAt)
-  const items = useMemoStore((state) => state.filteredItems({ includeDeleted: true })).filter((item) => item.deletedAt)
+  const memos = useMemoStore(
+    useShallow((state) => state.filteredMemos(true).filter((memo) => memo.deletedAt))
+  )
+  const items = useMemoStore(
+    useShallow((state) => state.filteredItems({ includeDeleted: true }).filter((item) => item.deletedAt))
+  )
   const restoreMemo = useMemoStore((state) => state.restoreMemo)
   const purgeMemo = useMemoStore((state) => state.purgeMemo)
   const restoreChecklistItem = useMemoStore((state) => state.restoreChecklistItem)
