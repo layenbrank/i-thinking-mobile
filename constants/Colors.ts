@@ -11,6 +11,8 @@ export default {
     tint: tintColorLight,
     secondary: '#3B82F6',
     destructive: '#DC2626',
+    success: '#10B981',
+    reminder: '#D97706',
     tabIconDefault: '#94A3B8',
     tabIconSelected: tintColorLight
   },
@@ -23,6 +25,8 @@ export default {
     tint: tintColorDark,
     secondary: '#3B82F6',
     destructive: '#F87171',
+    success: '#34D399',
+    reminder: '#FBBF24',
     tabIconDefault: '#64748B',
     tabIconSelected: tintColorDark
   }
