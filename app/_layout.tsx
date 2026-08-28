@@ -1,9 +1,6 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { config } from '@gluestack-ui/config'
-import { GluestackUIProvider } from '@gluestack-ui/themed'
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import * as Notifications from 'expo-notifications'
 import { useFonts } from 'expo-font'
 import { Redirect, Stack, useRouter, useSegments } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
@@ -16,7 +13,11 @@ import { useAppColorScheme } from '@/components/useAppColorScheme'
 import { useAuthStore } from '@/stores/authStore'
 import { subscribeMemoPersistence, useMemoStore } from '@/stores/memoStore'
 import { useSettingsStore } from '@/stores/settingsStore'
-import { ensureAndroidChannel, rescheduleAllPending } from '@/services/notifications'
+import {
+  ensureAndroidChannel,
+  rescheduleAllPending,
+  subscribeNotificationResponse
+} from '@/services/notifications'
 
 import '@/i18n'
 import i18n from '@/i18n'
@@ -60,9 +61,7 @@ function AuthGate({ children }: { children: ReactNode }) {
   }, [userId, memoHydrated])
 
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const itemId = response.notification.request.content.data?.itemId as string | undefined
-      const memoId = response.notification.request.content.data?.memoId as string | null | undefined
+    return subscribeNotificationResponse(({ itemId, memoId }) => {
       if (memoId) {
         router.push(`/memo/${memoId}`)
         return
@@ -71,7 +70,6 @@ function AuthGate({ children }: { children: ReactNode }) {
         router.push({ pathname: '/checklist/new', params: { itemId } })
       }
     })
-    return () => subscription.remove()
   }, [router])
 
   if (!isHydrated) {
@@ -112,13 +110,11 @@ export default function RootLayout() {
   }
 
   return (
-    <GluestackUIProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <SafeAreaProvider>
-          <RootLayoutNav />
-        </SafeAreaProvider>
-      </QueryClientProvider>
-    </GluestackUIProvider>
+    <QueryClientProvider client={queryClient}>
+      <SafeAreaProvider>
+        <RootLayoutNav />
+      </SafeAreaProvider>
+    </QueryClientProvider>
   )
 }
 

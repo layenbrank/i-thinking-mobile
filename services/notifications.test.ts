@@ -1,4 +1,5 @@
-import * as Notifications from 'expo-notifications'
+import cancelScheduledNotificationAsync from 'expo-notifications/build/cancelScheduledNotificationAsync'
+import scheduleNotificationAsync from 'expo-notifications/build/scheduleNotificationAsync'
 
 import {
   cancelItemReminder,
@@ -7,16 +8,44 @@ import {
 } from '@/services/notifications'
 import type { ChecklistItem } from '@/types/memo'
 
-jest.mock('expo-notifications', () => ({
-  setNotificationHandler: jest.fn(),
+jest.mock('expo-notifications/build/NotificationsHandler', () => ({
+  setNotificationHandler: jest.fn()
+}))
+
+jest.mock('expo-notifications/build/NotificationsEmitter', () => ({
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() }))
+}))
+
+jest.mock('expo-notifications/build/NotificationPermissions', () => ({
   getPermissionsAsync: jest.fn(async () => ({ granted: true })),
-  requestPermissionsAsync: jest.fn(async () => ({ granted: true })),
-  setNotificationChannelAsync: jest.fn(),
-  cancelScheduledNotificationAsync: jest.fn(),
-  scheduleNotificationAsync: jest.fn(async () => 'scheduled-id'),
-  SchedulableTriggerInputTypes: { DATE: 'date' },
-  AndroidImportance: { MAX: 5 },
-  IosAuthorizationStatus: { PROVISIONAL: 2 }
+  requestPermissionsAsync: jest.fn(async () => ({ granted: true }))
+}))
+
+jest.mock('expo-notifications/build/NotificationPermissions.types', () => ({
+  IosAuthorizationStatus: { PROVISIONAL: 3 }
+}))
+
+jest.mock('expo-notifications/build/NotificationChannelManager.types', () => ({
+  AndroidImportance: { MAX: 7 }
+}))
+
+jest.mock('expo-notifications/build/Notifications.types', () => ({
+  SchedulableTriggerInputTypes: { DATE: 'date' }
+}))
+
+jest.mock('expo-notifications/build/setNotificationChannelAsync', () => ({
+  __esModule: true,
+  default: jest.fn()
+}))
+
+jest.mock('expo-notifications/build/cancelScheduledNotificationAsync', () => ({
+  __esModule: true,
+  default: jest.fn()
+}))
+
+jest.mock('expo-notifications/build/scheduleNotificationAsync', () => ({
+  __esModule: true,
+  default: jest.fn(async () => 'scheduled-id')
 }))
 
 describe('notifications service', () => {
@@ -38,13 +67,13 @@ describe('notifications service', () => {
 
   test('scheduleItemReminder cancels then schedules with stable id', async () => {
     const id = await scheduleItemReminder(item)
-    expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(reminderIdentifier('item-1'))
-    expect(Notifications.scheduleNotificationAsync).toHaveBeenCalled()
+    expect(cancelScheduledNotificationAsync).toHaveBeenCalledWith(reminderIdentifier('item-1'))
+    expect(scheduleNotificationAsync).toHaveBeenCalled()
     expect(id).toBe(reminderIdentifier('item-1'))
   })
 
   test('cancelItemReminder uses stable identifier', async () => {
     await cancelItemReminder('item-1')
-    expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith('reminder-item-1')
+    expect(cancelScheduledNotificationAsync).toHaveBeenCalledWith('reminder-item-1')
   })
 })

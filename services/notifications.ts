@@ -1,11 +1,22 @@
-import * as Notifications from 'expo-notifications'
 import { Platform } from 'react-native'
+import cancelScheduledNotificationAsync from 'expo-notifications/build/cancelScheduledNotificationAsync'
+import { addNotificationResponseReceivedListener } from 'expo-notifications/build/NotificationsEmitter'
+import { setNotificationHandler } from 'expo-notifications/build/NotificationsHandler'
+import { AndroidImportance } from 'expo-notifications/build/NotificationChannelManager.types'
+import {
+  getPermissionsAsync,
+  requestPermissionsAsync
+} from 'expo-notifications/build/NotificationPermissions'
+import { IosAuthorizationStatus } from 'expo-notifications/build/NotificationPermissions.types'
+import { SchedulableTriggerInputTypes } from 'expo-notifications/build/Notifications.types'
+import scheduleNotificationAsync from 'expo-notifications/build/scheduleNotificationAsync'
+import setNotificationChannelAsync from 'expo-notifications/build/setNotificationChannelAsync'
 
 import type { ChecklistItem } from '@/types/memo'
 
 const REMINDER_CHANNEL_ID = 'reminders'
 
-Notifications.setNotificationHandler({
+setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
@@ -15,17 +26,23 @@ Notifications.setNotificationHandler({
   })
 })
 
+/**
+ * Builds a stable notification identifier for a checklist item.
+ */
 function reminderIdentifier(itemId: string) {
   return `reminder-${itemId}`
 }
 
+/**
+ * Ensures the Android reminder notification channel exists.
+ */
 async function ensureAndroidChannel() {
   if (Platform.OS !== 'android') {
     return
   }
-  await Notifications.setNotificationChannelAsync(REMINDER_CHANNEL_ID, {
+  await setNotificationChannelAsync(REMINDER_CHANNEL_ID, {
     name: 'Reminders',
-    importance: Notifications.AndroidImportance.MAX,
+    importance: AndroidImportance.MAX,
     vibrationPattern: [0, 250, 250, 250],
     lightColor: '#D97706',
     sound: 'default',
@@ -33,18 +50,24 @@ async function ensureAndroidChannel() {
   })
 }
 
+/**
+ * Requests notification permissions when not already granted.
+ */
 async function requestNotificationPermissions(): Promise<boolean> {
   await ensureAndroidChannel()
-  const settings = await Notifications.getPermissionsAsync()
-  if (settings.granted || settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL) {
+  const settings = await getPermissionsAsync()
+  if (settings.granted || settings.ios?.status === IosAuthorizationStatus.PROVISIONAL) {
     return true
   }
-  const result = await Notifications.requestPermissionsAsync()
-  return Boolean(result.granted || result.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL)
+  const result = await requestPermissionsAsync()
+  return Boolean(result.granted || result.ios?.status === IosAuthorizationStatus.PROVISIONAL)
 }
 
+/**
+ * Returns the current notification permission status.
+ */
 async function findNotificationPermissionStatus(): Promise<'granted' | 'denied' | 'undetermined'> {
-  const settings = await Notifications.getPermissionsAsync()
+  const settings = await getPermissionsAsync()
   if (settings.granted) {
     return 'granted'
   }
@@ -54,6 +77,9 @@ async function findNotificationPermissionStatus(): Promise<'granted' | 'denied' 
   return 'undetermined'
 }
 
+/**
+ * Exact-alarm capability probe. Returns null until the native API is exposed.
+ */
 async function canScheduleExactNotifications(): Promise<boolean | null> {
   if (Platform.OS !== 'android') {
     return null
@@ -62,6 +88,9 @@ async function canScheduleExactNotifications(): Promise<boolean | null> {
   return null
 }
 
+/**
+ * Schedules a local reminder for a checklist item.
+ */
 async function scheduleItemReminder(item: ChecklistItem): Promise<string | undefined> {
   if (!item.reminderAt || item.reminderAt <= Date.now()) {
     return undefined
@@ -73,9 +102,9 @@ async function scheduleItemReminder(item: ChecklistItem): Promise<string | undef
   }
 
   const identifier = reminderIdentifier(item.id)
-  await Notifications.cancelScheduledNotificationAsync(identifier)
+  await cancelScheduledNotificationAsync(identifier)
 
-  await Notifications.scheduleNotificationAsync({
+  await scheduleNotificationAsync({
     identifier,
     content: {
       title: 'Reminder',
@@ -87,7 +116,7 @@ async function scheduleItemReminder(item: ChecklistItem): Promise<string | undef
       }
     },
     trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      type: SchedulableTriggerInputTypes.DATE,
       date: new Date(item.reminderAt),
       channelId: REMINDER_CHANNEL_ID
     }
@@ -96,19 +125,42 @@ async function scheduleItemReminder(item: ChecklistItem): Promise<string | undef
   return identifier
 }
 
+/**
+ * Cancels a scheduled reminder for a checklist item.
+ */
 async function cancelItemReminder(itemId: string) {
-  await Notifications.cancelScheduledNotificationAsync(reminderIdentifier(itemId))
+  await cancelScheduledNotificationAsync(reminderIdentifier(itemId))
 }
 
+/**
+ * Cancels reminders for all given checklist items.
+ */
 async function cancelAllReminders(items: ChecklistItem[]) {
   await Promise.all(items.map((item) => cancelItemReminder(item.id)))
 }
 
+/**
+ * Re-schedules pending reminders after hydrate.
+ */
 async function rescheduleAllPending(items: ChecklistItem[]) {
   const pending = items.filter((item) => item.reminderAt && item.reminderAt > Date.now() && !item.completed)
   for (const item of pending) {
     await scheduleItemReminder(item)
   }
+}
+
+/**
+ * Subscribes to notification tap responses. Returns an unsubscribe function.
+ */
+function subscribeNotificationResponse(
+  onResponse: (payload: { itemId?: string; memoId?: string | null }) => void
+) {
+  const subscription = addNotificationResponseReceivedListener((response) => {
+    const itemId = response.notification.request.content.data?.itemId as string | undefined
+    const memoId = response.notification.request.content.data?.memoId as string | null | undefined
+    onResponse({ itemId, memoId })
+  })
+  return () => subscription.remove()
 }
 
 export {
@@ -120,5 +172,6 @@ export {
   reminderIdentifier,
   requestNotificationPermissions,
   rescheduleAllPending,
-  scheduleItemReminder
+  scheduleItemReminder,
+  subscribeNotificationResponse
 }
