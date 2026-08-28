@@ -1,4 +1,6 @@
 import { mmkvStorage } from '@/stores/storage'
+import { DELETE_USER_DATA } from '@/api/memo'
+import { hashPassword, isHashedPassword, verifyPassword } from '@/services/password'
 import type { Session, SignInBody, SignInResult, SignUpBody, StoredUser } from '@/types/auth'
 import type { RSF } from '@/types/response'
 
@@ -32,6 +34,13 @@ function fail<T>(code: number, message: string): Promise<RSF<T>> {
   return Promise.resolve({ code, message, data: null as T })
 }
 
+async function verifyStoredPassword(password: string, stored: string) {
+  if (isHashedPassword(stored)) {
+    return verifyPassword(password, stored)
+  }
+  return stored === password
+}
+
 async function POST_SIGNUP(data: SignUpBody): Promise<RSF<SignInResult>> {
   await delay(MOCK_DELAY_MS)
 
@@ -48,7 +57,7 @@ async function POST_SIGNUP(data: SignUpBody): Promise<RSF<SignInResult>> {
   const user: StoredUser = {
     id: `user-${Date.now()}`,
     email,
-    password: data.password
+    password: await hashPassword(data.password)
   }
   users.push(user)
   writeUsers(users)
@@ -70,8 +79,13 @@ async function POST_SIGNIN(data: SignInBody): Promise<RSF<SignInResult>> {
   const email = data.email.trim().toLowerCase()
   const user = readUsers().find((item) => item.email === email)
 
-  if (!user || user.password !== data.password) {
+  if (!user || !(await verifyStoredPassword(data.password, user.password))) {
     return fail(401, 'Invalid email or password')
+  }
+
+  if (!isHashedPassword(user.password)) {
+    user.password = await hashPassword(data.password)
+    writeUsers(readUsers().map((entry) => (entry.id === user.id ? user : entry)))
   }
 
   const token = createToken(user.id)
@@ -90,6 +104,15 @@ async function POST_SIGNOUT(): Promise<void> {
   mmkvStorage.removeItem(SESSION_KEY)
 }
 
+async function DELETE_ACCOUNT(userId: string): Promise<RSF<null>> {
+  await delay(MOCK_DELAY_MS)
+  const users = readUsers().filter((user) => user.id !== userId)
+  writeUsers(users)
+  await DELETE_USER_DATA(userId)
+  mmkvStorage.removeItem(SESSION_KEY)
+  return { code: 0, message: 'ok', data: null }
+}
+
 function findSession(): Session | null {
   const raw = mmkvStorage.getItem(SESSION_KEY)
   if (!raw) {
@@ -98,4 +121,4 @@ function findSession(): Session | null {
   return JSON.parse(raw) as Session
 }
 
-export { POST_SIGNIN, POST_SIGNOUT, POST_SIGNUP, findSession }
+export { DELETE_ACCOUNT, POST_SIGNIN, POST_SIGNOUT, POST_SIGNUP, findSession }

@@ -22,8 +22,12 @@ jest.mock('expo-notifications', () => ({
 describe('notifications service', () => {
   const item: ChecklistItem = {
     id: 'item-1',
+    listId: 'inbox',
     title: 'Buy milk',
     completed: false,
+    priority: 'none',
+    tags: [],
+    sortOrder: 0,
     reminderAt: Date.now() + 60000,
     createdAt: Date.now()
   }
