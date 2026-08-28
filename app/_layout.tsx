@@ -3,16 +3,23 @@ import { config } from '@gluestack-ui/config'
 import { GluestackUIProvider } from '@gluestack-ui/themed'
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import * as Notifications from 'expo-notifications'
 import { useFonts } from 'expo-font'
-import { Stack } from 'expo-router'
+import { Redirect, Stack, useRouter, useSegments } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
+import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import 'react-native-reanimated'
 
-import { useColorScheme } from '@/components/useColorScheme'
+import { useAppColorScheme } from '@/components/useAppColorScheme'
+import { useAuthStore } from '@/stores/authStore'
+import { subscribeMemoPersistence, useMemoStore } from '@/stores/memoStore'
+import { useSettingsStore } from '@/stores/settingsStore'
+import { ensureAndroidChannel, rescheduleAllPending } from '@/services/notifications'
 
 import '@/i18n'
+import i18n from '@/i18n'
 import '../global.css'
 
 export { ErrorBoundary } from 'expo-router'
@@ -24,6 +31,65 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync()
 
 const queryClient = new QueryClient()
+
+function AuthGate({ children }: { children: ReactNode }) {
+  const segments = useSegments()
+  const router = useRouter()
+  const isHydrated = useAuthStore((state) => state.isHydrated)
+  const userId = useAuthStore((state) => state.userId)
+  const memoHydrated = useMemoStore((state) => state.isHydrated)
+
+  useEffect(() => {
+    useAuthStore.getState().hydrate()
+    useSettingsStore.getState().hydrate()
+    ensureAndroidChannel()
+  }, [])
+
+  useEffect(() => {
+    const language = useSettingsStore.getState().language
+    i18n.changeLanguage(language)
+  }, [])
+
+  useEffect(() => {
+    if (userId && !memoHydrated) {
+      useMemoStore.getState().hydrate(userId)
+      rescheduleAllPending(useMemoStore.getState().items)
+      return subscribeMemoPersistence(userId)
+    }
+    return undefined
+  }, [userId, memoHydrated])
+
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const itemId = response.notification.request.content.data?.itemId as string | undefined
+      const memoId = response.notification.request.content.data?.memoId as string | null | undefined
+      if (memoId) {
+        router.push(`/memo/${memoId}`)
+        return
+      }
+      if (itemId) {
+        router.push({ pathname: '/checklist/new', params: { itemId } })
+      }
+    })
+    return () => subscription.remove()
+  }, [router])
+
+  if (!isHydrated) {
+    return null
+  }
+
+  const inAuthGroup = segments[0] === '(auth)'
+
+  if (!userId && !inAuthGroup) {
+    return <Redirect href="/(auth)/login" />
+  }
+
+  if (userId && inAuthGroup) {
+    return <Redirect href="/(navigation)" />
+  }
+
+  return children
+}
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -57,21 +123,30 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme()
+  const colorScheme = useAppColorScheme()
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(navigation)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="modal"
-          options={{
-            presentation: 'modal',
-            title: 'Modal',
-            headerShown: true
-          }}
-        />
-      </Stack>
+      <AuthGate>
+        <Stack>
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(navigation)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="memo/[id]"
+            options={{
+              title: 'Memo',
+              presentation: 'card'
+            }}
+          />
+          <Stack.Screen
+            name="checklist/new"
+            options={{
+              title: 'Task',
+              presentation: 'modal'
+            }}
+          />
+        </Stack>
+      </AuthGate>
     </ThemeProvider>
   )
 }

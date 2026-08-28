@@ -1,5 +1,6 @@
-import { ClipboardList, FileInput, Home, LayoutGrid, type LucideIcon } from 'lucide-react-native'
+import { BookOpen, CheckSquare, Settings, type LucideIcon } from 'lucide-react-native'
 import { Tabs } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import { Platform } from 'react-native'
 
 import { useThemeColors } from '@/components/ui/useThemeColors'
@@ -16,6 +17,7 @@ function NavIcon({ icon: Icon, color, focused }: NavIconProps) {
 
 export default function NavigationLayout() {
   const colors = useThemeColors()
+  const { t } = useTranslation()
 
   return (
     <Tabs
@@ -53,40 +55,28 @@ export default function NavigationLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: t('memos'),
           headerShown: false,
-          tabBarAccessibilityLabel: 'Home',
-          tabBarIcon: ({ color, focused }) => <NavIcon icon={Home} color={color} focused={focused} />
-        }}
-      />
-      <Tabs.Screen
-        name="form"
-        options={{
-          title: 'Form',
-          tabBarAccessibilityLabel: 'Form',
-          tabBarIcon: ({ color, focused }) => (
-            <NavIcon icon={FileInput} color={color} focused={focused} />
-          )
+          tabBarAccessibilityLabel: t('memos'),
+          tabBarIcon: ({ color, focused }) => <NavIcon icon={BookOpen} color={color} focused={focused} />
         }}
       />
       <Tabs.Screen
         name="list"
         options={{
-          title: 'List',
-          tabBarAccessibilityLabel: 'List',
+          title: t('checklist'),
+          tabBarAccessibilityLabel: t('checklist'),
           tabBarIcon: ({ color, focused }) => (
-            <NavIcon icon={ClipboardList} color={color} focused={focused} />
+            <NavIcon icon={CheckSquare} color={color} focused={focused} />
           )
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="settings"
         options={{
-          title: 'Explore',
-          tabBarAccessibilityLabel: 'Explore',
-          tabBarIcon: ({ color, focused }) => (
-            <NavIcon icon={LayoutGrid} color={color} focused={focused} />
-          )
+          title: t('settings'),
+          tabBarAccessibilityLabel: t('settings'),
+          tabBarIcon: ({ color, focused }) => <NavIcon icon={Settings} color={color} focused={focused} />
         }}
       />
     </Tabs>
