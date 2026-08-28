@@ -25,11 +25,21 @@ import { useMemoStore } from '@/stores/memoStore'
 import type { LanguagePreference, ThemePreference } from '@/stores/settingsStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 
+/**
+ * Builds a one-letter avatar initial from an email address.
+ */
+function findAvatarInitial(email: string | null) {
+  if (!email) {
+    return '?'
+  }
+  const local = email.split('@')[0]?.trim()
+  return (local?.[0] ?? email[0] ?? '?').toUpperCase()
+}
+
 export default function SettingsScreen() {
   const { t } = useTranslation()
   const colors = useThemeColors()
   const email = useAuthStore((state) => state.email)
-  const userId = useAuthStore((state) => state.userId)
   const signOut = useAuthStore((state) => state.signOut)
   const deleteAccount = useAuthStore((state) => state.deleteAccount)
   const theme = useSettingsStore((state) => state.theme)
@@ -64,21 +74,79 @@ export default function SettingsScreen() {
     return t('permissionUndetermined')
   }
 
-  function cycleTheme() {
-    const order: ThemePreference[] = ['system', 'light', 'dark']
-    setTheme(order[(order.indexOf(theme) + 1) % order.length])
-  }
-
   function themeLabel(value: ThemePreference) {
     if (value === 'light') return t('themeLight')
     if (value === 'dark') return t('themeDark')
     return t('themeSystem')
   }
 
-  function cycleLanguage() {
-    const next: LanguagePreference = language === 'zh' ? 'en' : 'zh'
-    setLanguage(next)
-    i18n.changeLanguage(next)
+  function languageLabel(value: LanguagePreference) {
+    return value === 'zh' ? '中文' : 'English'
+  }
+
+  function pickTheme() {
+    Alert.alert(t('theme'), t('chooseOption'), [
+      {
+        text: t('themeSystem'),
+        onPress: () => setTheme('system')
+      },
+      {
+        text: t('themeLight'),
+        onPress: () => setTheme('light')
+      },
+      {
+        text: t('themeDark'),
+        onPress: () => setTheme('dark')
+      },
+      { text: t('cancel'), style: 'cancel' }
+    ])
+  }
+
+  function pickLanguage() {
+    Alert.alert(t('language'), t('chooseOption'), [
+      {
+        text: '中文',
+        onPress: () => {
+          setLanguage('zh')
+          i18n.changeLanguage('zh')
+        }
+      },
+      {
+        text: 'English',
+        onPress: () => {
+          setLanguage('en')
+          i18n.changeLanguage('en')
+        }
+      },
+      { text: t('cancel'), style: 'cancel' }
+    ])
+  }
+
+  async function handleNotifications() {
+    if (permissionStatus === 'undetermined') {
+      await requestNotificationPermissions()
+      await refreshStatus()
+      return
+    }
+
+    Alert.alert(t('notifications'), permissionLabel(permissionStatus), [
+      {
+        text: t('openSettings'),
+        onPress: () => Linking.openSettings()
+      },
+      ...(permissionStatus !== 'granted'
+        ? [
+            {
+              text: t('requestPermission'),
+              onPress: async () => {
+                await requestNotificationPermissions()
+                await refreshStatus()
+              }
+            }
+          ]
+        : []),
+      { text: t('cancel'), style: 'cancel' as const }
+    ])
   }
 
   async function handleExport() {
@@ -130,25 +198,39 @@ export default function SettingsScreen() {
     ])
   }
 
+  const avatarInitial = findAvatarInitial(email)
+
   return (
     <Screen scroll>
-      <SectionHeader icon={Settings} title={t('settings')} description={email ?? ''} />
+      <SectionHeader icon={Settings} title={t('settings')} />
 
       <View className="gap-3">
         <View
-          className="rounded-xl border px-4 py-3"
+          className="flex-row items-center gap-3 rounded-xl border px-4 py-4"
           style={{ borderColor: colors.border, backgroundColor: colors.surface }}>
-          <Text className="text-sm" style={{ color: colors.textSecondary }}>
-            {t('account')}
-          </Text>
-          <Text className="mt-1 text-base font-medium" style={{ color: colors.text }}>
-            {email}
-          </Text>
+          <View
+            accessibilityLabel={t('account')}
+            className="h-14 w-14 items-center justify-center rounded-full"
+            style={{ backgroundColor: colors.tint }}>
+            <Text className="text-xl font-bold text-white">{avatarInitial}</Text>
+          </View>
+          <View className="min-w-0 flex-1 gap-0.5">
+            <Text className="text-sm" style={{ color: colors.textSecondary }}>
+              {t('account')}
+            </Text>
+            <Text className="text-base font-semibold" numberOfLines={1} style={{ color: colors.text }}>
+              {email ?? '—'}
+            </Text>
+          </View>
         </View>
 
         <SwitchRow label={t('hideCompleted')} onValueChange={setHideCompleted} value={hideCompleted} />
 
-        <SettingsLinkRow label={t('notifications')} onPress={requestNotificationPermissions} value={permissionLabel(permissionStatus)} />
+        <SettingsLinkRow
+          label={t('notifications')}
+          onPress={handleNotifications}
+          value={permissionLabel(permissionStatus)}
+        />
         <SettingsLinkRow label={t('trash')} onPress={() => router.push('/trash')} />
         <SettingsLinkRow label={t('exportData')} onPress={handleExport} />
         <SettingsLinkRow label={t('importData')} onPress={handleImport} />
@@ -164,7 +246,10 @@ export default function SettingsScreen() {
               {t('exactAlarmHint')}
             </Text>
             {exactAlarmEnabled !== true ? (
-              <Pressable accessibilityRole="button" className="min-h-[44px] justify-center active:opacity-70" onPress={() => Linking.openSettings()}>
+              <Pressable
+                accessibilityRole="button"
+                className="min-h-[44px] justify-center active:opacity-70"
+                onPress={() => Linking.openSettings()}>
                 <Text className="text-sm font-semibold" style={{ color: colors.tint }}>
                   {t('openSettings')}
                 </Text>
@@ -173,8 +258,8 @@ export default function SettingsScreen() {
           </View>
         ) : null}
 
-        <SettingsLinkRow label={t('theme')} onPress={cycleTheme} value={themeLabel(theme)} />
-        <SettingsLinkRow label={t('language')} onPress={cycleLanguage} value={language === 'zh' ? '中文' : 'English'} />
+        <SettingsLinkRow label={t('theme')} onPress={pickTheme} value={themeLabel(theme)} />
+        <SettingsLinkRow label={t('language')} onPress={pickLanguage} value={languageLabel(language)} />
 
         <View
           className="rounded-xl border px-4 py-3"

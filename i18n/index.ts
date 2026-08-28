@@ -92,7 +92,8 @@ const resources = {
       unpin: 'Unpin',
       autoSaved: 'Auto-saved',
       version: 'Version',
-      about: 'About'
+      about: 'About',
+      chooseOption: 'Choose an option'
     }
   },
   zh: {
@@ -185,7 +186,8 @@ const resources = {
       unpin: '取消置顶',
       autoSaved: '已自动保存',
       version: '版本',
-      about: '关于'
+      about: '关于',
+      chooseOption: '请选择'
     }
   }
 }

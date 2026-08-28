@@ -52,14 +52,14 @@ function FormField({
             accessibilityLabel={accessibilityLabel ?? label}
             autoCapitalize={autoCapitalize}
             autoCorrect={false}
-            className="flex-1 py-3 text-base"
+            className="h-12 flex-1 text-base"
             keyboardType={keyboardType}
             onBlur={onBlur}
             onChangeText={onChangeText}
             placeholder={placeholder}
             placeholderTextColor={colors.textSecondary}
             secureTextEntry={secureTextEntry}
-            style={{ color: colors.text }}
+            style={{ color: colors.text, textAlignVertical: 'center', paddingVertical: 0 }}
             value={value}
           />
         )}
