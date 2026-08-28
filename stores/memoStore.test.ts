@@ -11,7 +11,15 @@ describe('memoStore', () => {
 
   beforeEach(() => {
     mmkvStorage.removeItem(`memo:data:${userId}`)
-    useMemoStore.setState({ memos: [], items: [], filter: 'all', isHydrated: false })
+    useMemoStore.setState({
+      memos: [],
+      items: [],
+      lists: [],
+      filter: 'all',
+      searchQuery: '',
+      isHydrated: false,
+      undoAction: null
+    })
   })
 
   test('insertMemo adds memo to state', () => {
@@ -20,14 +28,18 @@ describe('memoStore', () => {
     expect(memo.title).toBe('Hello')
   })
 
-  test('filteredItems respects filter', async () => {
-    await useMemoStore.getState().insertChecklistItem('Task A')
-    await useMemoStore.getState().insertChecklistItem('Task B', undefined, Date.now() + 3600000)
-    useMemoStore.getState().setFilter('reminder')
+  test('filteredItems respects today filter', async () => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    await useMemoStore.getState().insertChecklistItem({
+      title: 'Future',
+      dueAt: tomorrow.getTime()
+    })
+    useMemoStore.getState().setFilter('upcoming')
     expect(useMemoStore.getState().filteredItems()).toHaveLength(1)
   })
 
-  test('hydrate loads persisted data', () => {
+  test('hydrate loads migrated data', () => {
     mmkvStorage.setItem(
       `memo:data:${userId}`,
       JSON.stringify({
@@ -37,5 +49,6 @@ describe('memoStore', () => {
     )
     useMemoStore.getState().hydrate(userId)
     expect(useMemoStore.getState().memos[0].title).toBe('Saved')
+    expect(useMemoStore.getState().lists.length).toBeGreaterThan(0)
   })
 })

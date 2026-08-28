@@ -1,3 +1,4 @@
+import { DELETE_ACCOUNT } from '@/api/auth'
 import { create } from 'zustand'
 
 import { POST_SIGNIN, POST_SIGNOUT, POST_SIGNUP, findSession } from '@/api/auth'
@@ -13,9 +14,10 @@ interface AuthState {
   signIn: (data: SignInBody) => Promise<string | null>
   signUp: (data: SignUpBody) => Promise<string | null>
   signOut: () => Promise<void>
+  deleteAccount: () => Promise<string | null>
 }
 
-const useAuthStore = create<AuthState>((set) => ({
+const useAuthStore = create<AuthState>((set, get) => ({
   userId: null,
   email: null,
   token: null,
@@ -69,6 +71,20 @@ const useAuthStore = create<AuthState>((set) => ({
   async signOut() {
     await POST_SIGNOUT()
     set({ userId: null, email: null, token: null })
+  },
+
+  async deleteAccount() {
+    const userId = get().userId
+    if (!userId) {
+      return 'Not signed in'
+    }
+    set({ isLoading: true })
+    const result = await DELETE_ACCOUNT(userId)
+    set({ isLoading: false, userId: null, email: null, token: null })
+    if (result.code !== 0) {
+      return result.message
+    }
+    return null
   }
 }))
 

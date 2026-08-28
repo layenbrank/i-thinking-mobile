@@ -8,44 +8,63 @@ type LanguagePreference = 'zh' | 'en'
 interface SettingsState {
   theme: ThemePreference
   language: LanguagePreference
+  hideCompleted: boolean
   hydrate: () => void
   setTheme: (theme: ThemePreference) => void
   setLanguage: (language: LanguagePreference) => void
+  setHideCompleted: (hideCompleted: boolean) => void
 }
 
 const SETTINGS_KEY = 'app:settings'
 
-function readSettings(): Pick<SettingsState, 'theme' | 'language'> {
-  const raw = mmkvStorage.getItem(SETTINGS_KEY)
-  if (!raw) {
-    return { theme: 'system', language: 'zh' }
-  }
-  return JSON.parse(raw) as Pick<SettingsState, 'theme' | 'language'>
+interface StoredSettings {
+  theme: ThemePreference
+  language: LanguagePreference
+  hideCompleted: boolean
 }
 
-function writeSettings(theme: ThemePreference, language: LanguagePreference) {
-  mmkvStorage.setItem(SETTINGS_KEY, JSON.stringify({ theme, language }))
+function readSettings(): StoredSettings {
+  const raw = mmkvStorage.getItem(SETTINGS_KEY)
+  if (!raw) {
+    return { theme: 'system', language: 'zh', hideCompleted: false }
+  }
+  const parsed = JSON.parse(raw) as Partial<StoredSettings>
+  return {
+    theme: parsed.theme ?? 'system',
+    language: parsed.language ?? 'zh',
+    hideCompleted: parsed.hideCompleted ?? false
+  }
+}
+
+function writeSettings(settings: StoredSettings) {
+  mmkvStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
 }
 
 const useSettingsStore = create<SettingsState>((set) => ({
   theme: 'system',
   language: 'zh',
+  hideCompleted: false,
 
   hydrate() {
-    const settings = readSettings()
-    set(settings)
+    set(readSettings())
   },
 
   setTheme(theme) {
     set({ theme })
-    const { language } = useSettingsStore.getState()
-    writeSettings(theme, language)
+    const current = readSettings()
+    writeSettings({ ...current, theme })
   },
 
   setLanguage(language) {
     set({ language })
-    const { theme } = useSettingsStore.getState()
-    writeSettings(theme, language)
+    const current = readSettings()
+    writeSettings({ ...current, language })
+  },
+
+  setHideCompleted(hideCompleted) {
+    set({ hideCompleted })
+    const current = readSettings()
+    writeSettings({ ...current, hideCompleted })
   }
 }))
 

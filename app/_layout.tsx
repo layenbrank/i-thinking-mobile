@@ -145,6 +145,13 @@ function RootLayoutNav() {
               presentation: 'modal'
             }}
           />
+          <Stack.Screen
+            name="trash"
+            options={{
+              title: 'Trash',
+              presentation: 'modal'
+            }}
+          />
         </Stack>
       </AuthGate>
     </ThemeProvider>

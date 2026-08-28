@@ -1,11 +1,14 @@
 import { router } from 'expo-router'
-import { BookOpen, Plus, Trash2 } from 'lucide-react-native'
-import { useCallback } from 'react'
+import { BookOpen, Pin, Plus, Trash2 } from 'lucide-react-native'
+import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Alert, FlatList, Pressable, RefreshControl, Text, View } from 'react-native'
+import { Alert, FlatList, Pressable, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { EmptyState } from '@/components/ui/EmptyState'
+import { SearchBar } from '@/components/ui/SearchBar'
+import { TagPicker } from '@/components/ui/TagPicker'
+import { UndoBanner } from '@/components/ui/UndoBanner'
 import { useThemeColors } from '@/components/ui/useThemeColors'
 import { useMemoStore } from '@/stores/memoStore'
 import type { Memo } from '@/types/memo'
@@ -14,9 +17,35 @@ export default function MemosScreen() {
   const { t } = useTranslation()
   const colors = useThemeColors()
   const insets = useSafeAreaInsets()
-  const memos = useMemoStore((state) => state.memos)
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const searchQuery = useMemoStore((state) => state.searchQuery)
+  const setSearchQuery = useMemoStore((state) => state.setSearchQuery)
+  const activeTag = useMemoStore((state) => state.activeTag)
+  const setActiveTag = useMemoStore((state) => state.setActiveTag)
+  const memos = useMemoStore((state) => state.filteredMemos())
+  const tags = useMemoStore((state) => state.findTags())
   const insertMemo = useMemoStore((state) => state.insertMemo)
-  const removeMemo = useMemoStore((state) => state.removeMemo)
+  const softDeleteMemo = useMemoStore((state) => state.softDeleteMemo)
+  const restoreMemo = useMemoStore((state) => state.restoreMemo)
+  const togglePinMemo = useMemoStore((state) => state.togglePinMemo)
+  const undoAction = useMemoStore((state) => state.undoAction)
+  const clearUndo = useMemoStore((state) => state.clearUndo)
+
+  useEffect(() => {
+    if (!undoAction || undoAction.type !== 'memo') {
+      return undefined
+    }
+    if (undoTimer.current) {
+      clearTimeout(undoTimer.current)
+    }
+    undoTimer.current = setTimeout(() => clearUndo(), 5000)
+    return () => {
+      if (undoTimer.current) {
+        clearTimeout(undoTimer.current)
+      }
+    }
+  }, [undoAction, clearUndo])
 
   const handleCreate = useCallback(() => {
     const memo = insertMemo(t('newMemo'), '')
@@ -25,25 +54,17 @@ export default function MemosScreen() {
 
   const handleDelete = useCallback(
     (memo: Memo) => {
-      Alert.alert(t('delete'), memo.title, [
-        { text: t('cancel'), style: 'cancel' },
-        {
-          text: t('delete'),
-          style: 'destructive',
-          onPress: () => removeMemo(memo.id)
-        }
-      ])
+      softDeleteMemo(memo.id)
     },
-    [removeMemo, t]
+    [softDeleteMemo]
   )
 
   const renderItem = useCallback(
     ({ item }: { item: Memo }) => (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Open memo ${item.title}`}
         className="min-h-[72px] flex-row items-center gap-3 border-b px-5 py-4 active:opacity-70"
-        onLongPress={() => handleDelete(item)}
+        onLongPress={() => togglePinMemo(item.id)}
         onPress={() => router.push(`/memo/${item.id}`)}
         style={{ borderBottomColor: colors.border, backgroundColor: colors.surface }}>
         <View
@@ -52,16 +73,23 @@ export default function MemosScreen() {
           <BookOpen size={18} color={colors.tint} strokeWidth={1.75} />
         </View>
         <View className="min-w-0 flex-1 gap-1">
-          <Text className="text-base font-semibold" numberOfLines={1} style={{ color: colors.text }}>
-            {item.title}
-          </Text>
+          <View className="flex-row items-center gap-2">
+            {item.isPinned ? <Pin size={14} color={colors.reminder} strokeWidth={2} /> : null}
+            <Text className="flex-1 text-base font-semibold" numberOfLines={1} style={{ color: colors.text }}>
+              {item.title}
+            </Text>
+          </View>
           <Text className="text-sm" numberOfLines={2} style={{ color: colors.textSecondary }}>
             {item.content || t('emptyMemosHint')}
           </Text>
+          {item.tags.length > 0 ? (
+            <Text className="text-xs" numberOfLines={1} style={{ color: colors.textSecondary }}>
+              {item.tags.map((tag) => `#${tag}`).join(' ')}
+            </Text>
+          ) : null}
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Delete ${item.title}`}
           className="h-11 w-11 items-center justify-center rounded-full active:opacity-70"
           hitSlop={4}
           onPress={() => handleDelete(item)}>
@@ -69,21 +97,42 @@ export default function MemosScreen() {
         </Pressable>
       </Pressable>
     ),
-    [colors, handleDelete, t]
+    [colors, handleDelete, togglePinMemo, t]
   )
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <View
-        className="border-b px-5 pb-4 pt-2"
+        className="gap-3 border-b px-5 pb-4 pt-2"
         style={{ borderBottomColor: colors.border, paddingTop: insets.top + 8 }}>
         <Text className="text-2xl font-bold" style={{ color: colors.text }}>
           {t('memos')}
         </Text>
-        <Text className="mt-1 text-sm" style={{ color: colors.textSecondary }}>
-          {memos.length} notes
-        </Text>
+        <SearchBar
+          accessibilityLabel={t('search')}
+          onChangeText={setSearchQuery}
+          placeholder={t('searchPlaceholder')}
+          value={searchQuery}
+        />
+        {tags.length > 0 ? (
+          <TagPicker
+            label={t('tags')}
+            onChange={(selected) => setActiveTag(selected[0])}
+            selected={activeTag ? [activeTag] : []}
+            suggestions={tags}
+            tags={tags}
+          />
+        ) : null}
       </View>
+
+      {undoAction?.type === 'memo' ? (
+        <UndoBanner
+          actionLabel={t('undo')}
+          message={t('deleted')}
+          onDismiss={clearUndo}
+          onUndo={() => restoreMemo(undoAction.id)}
+        />
+      ) : null}
 
       <FlatList
         ListEmptyComponent={
@@ -98,21 +147,16 @@ export default function MemosScreen() {
         contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 80 }}
         data={memos}
         keyExtractor={(item) => item.id}
-        refreshControl={<RefreshControl refreshing={false} onRefresh={() => undefined} />}
         renderItem={renderItem}
       />
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={t('newMemo')}
         className="absolute bottom-6 right-5 h-14 w-14 items-center justify-center rounded-full active:opacity-80"
         onPress={handleCreate}
         style={{
           backgroundColor: colors.tint,
           marginBottom: insets.bottom,
-          shadowColor: '#000',
-          shadowOpacity: 0.15,
-          shadowRadius: 8,
           elevation: 4
         }}>
         <Plus size={24} color="#FFFFFF" strokeWidth={2.5} />
