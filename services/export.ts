@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system'
+import { File, Paths } from 'expo-file-system'
 import * as Sharing from 'expo-sharing'
 
 import type { UserMemoData } from '@/types/memo'
@@ -15,13 +15,14 @@ async function exportUserData(data: UserMemoData) {
     app: 'i-thinking'
   }
   const json = JSON.stringify(payload, null, 2)
-  const path = `${FileSystem.cacheDirectory}i-thinking-backup-${Date.now()}.json`
-  await FileSystem.writeAsStringAsync(path, json)
+  const file = new File(Paths.cache, `i-thinking-backup-${Date.now()}.json`)
+  file.create({ overwrite: true })
+  file.write(json)
   const canShare = await Sharing.isAvailableAsync()
   if (canShare) {
-    await Sharing.shareAsync(path, { mimeType: 'application/json', dialogTitle: 'Export backup' })
+    await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: 'Export backup' })
   }
-  return path
+  return file.uri
 }
 
 function parseImportPayload(raw: string): UserMemoData | null {
