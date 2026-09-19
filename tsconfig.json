@@ -16,11 +16,5 @@
     "expo-env.d.ts",
     "jest-env.d.ts"
   ],
-  "exclude": [
-    "node_modules",
-    "babel.config.js",
-    "metro.config.js",
-    "android",
-    "ios"
-  ]
+  "exclude": ["node_modules", "babel.config.js", "metro.config.js", "android", "ios"]
 }

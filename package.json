@@ -76,6 +76,7 @@
     "@babel/core": "^7.20.0",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^29.5.14",
+    "@types/node": "^26.6.2",
     "@types/react": "~19.1.10",
     "eslint": "^9.25.1",
     "eslint-config-expo": "~10.0.0",
@@ -93,7 +94,7 @@
       "./jest.setup.ts"
     ],
     "transformIgnorePatterns": [
-      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|react-navigation|@react-navigation/.*|nativewind|react-native-css-interop|lucide-react-native))"
+      "node_modules/(?!.*(?:react-native|@react-native|expo|@expo|react-navigation|@react-navigation|nativewind|react-native-css-interop|lucide-react-native|@gluestack-ui))"
     ],
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/$1",

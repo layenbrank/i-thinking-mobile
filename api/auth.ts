@@ -1,116 +1,59 @@
-import { mmkvStorage } from '@/stores/storage'
-import { DELETE_USER_DATA } from '@/api/memo'
+import { API_PATHS, API_SUCCESS_CODE, CAPTCHA_PLACEHOLDER } from '@/constants/api'
+import { findAuthMode } from '@/constants/config'
+import { ApiError, isApiSuccess, requestJson } from '@/api/http'
 import { hashPassword, isHashedPassword, verifyPassword } from '@/services/password'
-import type { Session, SignInBody, SignInResult, SignUpBody, StoredUser } from '@/types/auth'
+import { mmkvStorage } from '@/stores/storage'
+import type {
+  Profile,
+  Session,
+  SignInBody,
+  SignInResult,
+  SignUpBody,
+  StoredLocalUser
+} from '@/types/auth'
 import type { RSF } from '@/types/response'
 
 const USERS_KEY = 'auth:users'
 const SESSION_KEY = 'auth:session'
-const MOCK_DELAY_MS = 350
 
-function delay(ms: number) {
-  return new Promise<void>((resolve) => {
-    setTimeout(resolve, ms)
-  })
+function envelope<T>(data: T, msg = 'ok'): RSF<T> {
+  return {
+    code: API_SUCCESS_CODE,
+    success: true,
+    msg,
+    data,
+    timestamp: Date.now()
+  }
 }
 
-function readUsers(): StoredUser[] {
+function fail<T>(code: number, msg: string): RSF<T> {
+  return {
+    code,
+    success: false,
+    msg,
+    data: null as T,
+    timestamp: Date.now()
+  }
+}
+
+function readUsers(): StoredLocalUser[] {
   const raw = mmkvStorage.getItem(USERS_KEY)
   if (!raw) {
     return []
   }
-  return JSON.parse(raw) as StoredUser[]
+  return JSON.parse(raw) as StoredLocalUser[]
 }
 
-function writeUsers(users: StoredUser[]) {
+function writeUsers(users: StoredLocalUser[]) {
   mmkvStorage.setItem(USERS_KEY, JSON.stringify(users))
 }
 
-function createToken(userId: string) {
-  return `mock-token-${userId}-${Date.now()}`
-}
-
-function fail<T>(code: number, message: string): Promise<RSF<T>> {
-  return Promise.resolve({ code, message, data: null as T })
-}
-
-async function verifyStoredPassword(password: string, stored: string) {
-  if (isHashedPassword(stored)) {
-    return verifyPassword(password, stored)
-  }
-  return stored === password
-}
-
-async function POST_SIGNUP(data: SignUpBody): Promise<RSF<SignInResult>> {
-  await delay(MOCK_DELAY_MS)
-
-  const email = data.email.trim().toLowerCase()
-  if (!email || !data.password) {
-    return fail(400, 'Email and password are required')
-  }
-
-  const users = readUsers()
-  if (users.some((user) => user.email === email)) {
-    return fail(409, 'Email already registered')
-  }
-
-  const user: StoredUser = {
-    id: `user-${Date.now()}`,
-    email,
-    password: await hashPassword(data.password)
-  }
-  users.push(user)
-  writeUsers(users)
-
-  const token = createToken(user.id)
-  const session: Session = { token, userId: user.id, email: user.email }
+function writeSession(session: Session) {
   mmkvStorage.setItem(SESSION_KEY, JSON.stringify(session))
-
-  return {
-    code: 0,
-    message: 'ok',
-    data: { token, id: user.id, email: user.email }
-  }
 }
 
-async function POST_SIGNIN(data: SignInBody): Promise<RSF<SignInResult>> {
-  await delay(MOCK_DELAY_MS)
-
-  const email = data.email.trim().toLowerCase()
-  const user = readUsers().find((item) => item.email === email)
-
-  if (!user || !(await verifyStoredPassword(data.password, user.password))) {
-    return fail(401, 'Invalid email or password')
-  }
-
-  if (!isHashedPassword(user.password)) {
-    user.password = await hashPassword(data.password)
-    writeUsers(readUsers().map((entry) => (entry.id === user.id ? user : entry)))
-  }
-
-  const token = createToken(user.id)
-  const session: Session = { token, userId: user.id, email: user.email }
-  mmkvStorage.setItem(SESSION_KEY, JSON.stringify(session))
-
-  return {
-    code: 0,
-    message: 'ok',
-    data: { token, id: user.id, email: user.email }
-  }
-}
-
-async function POST_SIGNOUT(): Promise<void> {
-  await delay(100)
+function clearSession() {
   mmkvStorage.removeItem(SESSION_KEY)
-}
-
-async function DELETE_ACCOUNT(userId: string): Promise<RSF<null>> {
-  await delay(MOCK_DELAY_MS)
-  const users = readUsers().filter((user) => user.id !== userId)
-  writeUsers(users)
-  await DELETE_USER_DATA(userId)
-  mmkvStorage.removeItem(SESSION_KEY)
-  return { code: 0, message: 'ok', data: null }
 }
 
 function findSession(): Session | null {
@@ -121,4 +64,171 @@ function findSession(): Session | null {
   return JSON.parse(raw) as Session
 }
 
-export { DELETE_ACCOUNT, POST_SIGNIN, POST_SIGNOUT, POST_SIGNUP, findSession }
+function withCaptcha(body: SignInBody | SignUpBody) {
+  return {
+    username: body.username.trim(),
+    password: body.password,
+    captchaKey: body.captchaKey ?? CAPTCHA_PLACEHOLDER.captchaKey,
+    captchaValue: body.captchaValue ?? CAPTCHA_PLACEHOLDER.captchaValue,
+    captchaKind: body.captchaKind
+  }
+}
+
+async function POST_SIGNUP_LOCAL(data: SignUpBody): Promise<RSF<SignInResult>> {
+  const username = data.username.trim()
+  if (!username || !data.password) {
+    return fail(400001, 'Username and password are required')
+  }
+
+  const users = readUsers()
+  if (users.some((user) => user.username === username)) {
+    return fail(409001, 'Username already registered')
+  }
+
+  const now = Date.now()
+  const user: StoredLocalUser = {
+    id: `local-${now}`,
+    username,
+    password: await hashPassword(data.password),
+    createdAt: now,
+    updatedAt: now
+  }
+  users.push(user)
+  writeUsers(users)
+
+  const token = `local-token-${user.id}`
+  writeSession({ token, userId: user.id, username: user.username })
+
+  return envelope({
+    token,
+    id: user.id,
+    username: user.username,
+    role: 'USER',
+    status: 'ACTIVE',
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
+  })
+}
+
+async function POST_SIGNIN_LOCAL(data: SignInBody): Promise<RSF<SignInResult>> {
+  const username = data.username.trim()
+  const user = readUsers().find((item) => item.username === username)
+  if (!user || !(await verifyPassword(data.password, user.password))) {
+    return fail(401001, 'Invalid username or password')
+  }
+
+  if (!isHashedPassword(user.password)) {
+    user.password = await hashPassword(data.password)
+    writeUsers(readUsers().map((entry) => (entry.id === user.id ? user : entry)))
+  }
+
+  const token = `local-token-${user.id}`
+  writeSession({ token, userId: user.id, username: user.username })
+
+  return envelope({
+    token,
+    id: user.id,
+    username: user.username,
+    role: 'USER',
+    status: 'ACTIVE',
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
+  })
+}
+
+async function POST_SIGNUP(data: SignUpBody): Promise<RSF<SignInResult>> {
+  if (findAuthMode() === 'local') {
+    return POST_SIGNUP_LOCAL(data)
+  }
+
+  try {
+    const result = await requestJson<SignInResult>(API_PATHS.AUTH_SIGNUP, {
+      method: 'POST',
+      body: withCaptcha(data)
+    })
+    if (isApiSuccess(result.code) && result.data?.token) {
+      writeSession({
+        token: result.data.token,
+        userId: result.data.id,
+        username: result.data.username
+      })
+    }
+    return result
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return fail(error.code, error.message)
+    }
+    return fail(500000, error instanceof Error ? error.message : 'Sign up failed')
+  }
+}
+
+async function POST_SIGNIN(data: SignInBody): Promise<RSF<SignInResult>> {
+  if (findAuthMode() === 'local') {
+    return POST_SIGNIN_LOCAL(data)
+  }
+
+  try {
+    const result = await requestJson<SignInResult>(API_PATHS.AUTH_SIGNIN, {
+      method: 'POST',
+      body: withCaptcha(data)
+    })
+    if (isApiSuccess(result.code) && result.data?.token) {
+      writeSession({
+        token: result.data.token,
+        userId: result.data.id,
+        username: result.data.username
+      })
+    }
+    return result
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return fail(error.code, error.message)
+    }
+    return fail(500000, error instanceof Error ? error.message : 'Sign in failed')
+  }
+}
+
+async function POST_SIGNOUT(token?: string | null): Promise<RSF<null>> {
+  if (findAuthMode() === 'remote' && token) {
+    try {
+      await requestJson<null>(API_PATHS.AUTH_SIGNOUT, {
+        method: 'POST',
+        token
+      })
+    } catch {
+      // Local session is cleared regardless of remote outcome.
+    }
+  }
+  clearSession()
+  return envelope(null)
+}
+
+async function GET_PROFILE(token: string): Promise<RSF<Profile>> {
+  if (findAuthMode() === 'local') {
+    const session = findSession()
+    if (!session || session.token !== token) {
+      return fail(401000, 'Unauthorized')
+    }
+    const user = readUsers().find((item) => item.id === session.userId)
+    if (!user) {
+      return fail(401000, 'Unauthorized')
+    }
+    return envelope({
+      id: user.id,
+      username: user.username,
+      role: 'USER',
+      status: 'ACTIVE',
+      email: null,
+      phone: null,
+      gender: null,
+      birthday: null,
+      age: null,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    })
+  }
+
+  return requestJson<Profile>(API_PATHS.AUTH_PROFILE, { token })
+}
+
+export { GET_PROFILE, POST_SIGNIN, POST_SIGNOUT, POST_SIGNUP, findSession }

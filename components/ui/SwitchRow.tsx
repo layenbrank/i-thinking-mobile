@@ -18,11 +18,15 @@ function SwitchRow({ label, description, value, onValueChange }: SwitchRowProps)
       className="min-h-[56px] flex-row items-center justify-between gap-3 rounded-xl border px-4 py-3"
       style={{ borderColor: colors.border, backgroundColor: colors.surface }}>
       <View className="flex-1 gap-0.5">
-        <Text className="text-base font-medium" style={{ color: colors.text }}>
+        <Text
+          className="text-base font-medium"
+          style={{ color: colors.text }}>
           {label}
         </Text>
         {description ? (
-          <Text className="text-sm" style={{ color: colors.textSecondary }}>
+          <Text
+            className="text-sm"
+            style={{ color: colors.textSecondary }}>
             {description}
           </Text>
         ) : null}
@@ -54,16 +58,24 @@ function SettingsLinkRow({ label, value, onPress }: SettingsLinkRowProps) {
       className="min-h-[56px] flex-row items-center justify-between gap-3 rounded-xl border px-4 py-3 active:opacity-70"
       onPress={onPress}
       style={{ borderColor: colors.border, backgroundColor: colors.surface }}>
-      <Text className="text-base font-medium" style={{ color: colors.text }}>
+      <Text
+        className="text-base font-medium"
+        style={{ color: colors.text }}>
         {label}
       </Text>
       <View className="flex-row items-center gap-2">
         {value ? (
-          <Text className="text-sm" style={{ color: colors.textSecondary }}>
+          <Text
+            className="text-sm"
+            style={{ color: colors.textSecondary }}>
             {value}
           </Text>
         ) : null}
-        <ChevronRight size={18} color={colors.textSecondary} strokeWidth={1.75} />
+        <ChevronRight
+          size={18}
+          color={colors.textSecondary}
+          strokeWidth={1.75}
+        />
       </View>
     </Pressable>
   )

@@ -1,29 +1,52 @@
 interface SignInBody {
-  email: string
+  username: string
   password: string
+  captchaKey?: string
+  captchaValue?: string
+  captchaKind?: string
 }
 
 interface SignUpBody {
-  email: string
+  username: string
   password: string
+  captchaKey?: string
+  captchaValue?: string
+  captchaKind?: string
 }
 
-interface SignInResult {
+interface AuthUser {
+  id: string
+  username: string
+  role: string
+  status: string
+  createdAt: number
+  updatedAt: number
+}
+
+interface SignInResult extends AuthUser {
   token: string
-  id: string
-  email: string
 }
 
-interface StoredUser {
-  id: string
-  email: string
-  password: string
+interface Profile extends AuthUser {
+  email: string | null
+  phone: string | null
+  gender: string | null
+  birthday: string | null
+  age: number | null
 }
 
 interface Session {
   token: string
   userId: string
-  email: string
+  username: string
 }
 
-export type { Session, SignInBody, SignInResult, SignUpBody, StoredUser }
+interface StoredLocalUser {
+  id: string
+  username: string
+  password: string
+  createdAt: number
+  updatedAt: number
+}
+
+export type { AuthUser, Profile, Session, SignInBody, SignInResult, SignUpBody, StoredLocalUser }

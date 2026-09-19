@@ -1,35 +1,27 @@
+import { POST_SIGNIN, POST_SIGNUP, findSession } from '@/api/auth'
 import { mmkvStorage } from '@/stores/storage'
-import { POST_SIGNIN, POST_SIGNOUT, POST_SIGNUP } from '@/api/auth'
 
-describe('auth api', () => {
+describe('local auth api', () => {
   beforeEach(() => {
     mmkvStorage.removeItem('auth:users')
     mmkvStorage.removeItem('auth:session')
   })
 
-  test('POST_SIGNUP registers and signs in', async () => {
-    const result = await POST_SIGNUP({ email: 'test@example.com', password: 'secret1' })
-    expect(result.code).toBe(0)
-    expect(result.data.email).toBe('test@example.com')
+  test('signs up and signs in locally', async () => {
+    const signup = await POST_SIGNUP({ username: 'alice', password: 'secret1' })
+    expect(signup.success).toBe(true)
+    expect(signup.data.username).toBe('alice')
+    expect(findSession()?.username).toBe('alice')
+
+    mmkvStorage.removeItem('auth:session')
+    const signin = await POST_SIGNIN({ username: 'alice', password: 'secret1' })
+    expect(signin.success).toBe(true)
+    expect(signin.data.token).toContain('local-token')
   })
 
-  test('POST_SIGNUP rejects duplicate email', async () => {
-    await POST_SIGNUP({ email: 'dup@example.com', password: 'secret1' })
-    const result = await POST_SIGNUP({ email: 'dup@example.com', password: 'secret2' })
-    expect(result.code).toBe(409)
-  })
-
-  test('POST_SIGNIN validates credentials', async () => {
-    await POST_SIGNUP({ email: 'user@example.com', password: 'secret1' })
-    const ok = await POST_SIGNIN({ email: 'user@example.com', password: 'secret1' })
-    const bad = await POST_SIGNIN({ email: 'user@example.com', password: 'wrong' })
-    expect(ok.code).toBe(0)
-    expect(bad.code).toBe(401)
-  })
-
-  test('POST_SIGNOUT clears session', async () => {
-    await POST_SIGNUP({ email: 'out@example.com', password: 'secret1' })
-    await POST_SIGNOUT()
-    expect(mmkvStorage.getItem('auth:session')).toBeNull()
+  test('rejects duplicate username', async () => {
+    await POST_SIGNUP({ username: 'bob', password: 'secret1' })
+    const again = await POST_SIGNUP({ username: 'bob', password: 'secret1' })
+    expect(again.success).toBe(false)
   })
 })

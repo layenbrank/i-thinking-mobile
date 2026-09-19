@@ -110,7 +110,7 @@ npx expo install <包名>
 
 | 包 | 作用 |
 |----|------|
-| `zustand` | 轻量全局状态（登录态、设置、备忘录列表）。 |
+| `zustand` | 轻量全局状态（登录态、设置、磁贴、Agent）。 |
 | `@tanstack/react-query` | 服务端/异步数据缓存与请求状态（Provider 已挂在根布局）。 |
 | `react-hook-form` | 表单状态与校验触发（登录 / 注册）。 |
 | `@hookform/resolvers` | 把 Zod schema 接到 react-hook-form。 |
@@ -124,7 +124,7 @@ npx expo install <包名>
 
 | 包 | 作用 |
 |----|------|
-| `react-native-mmkv` | 高性能本地键值存储（设置、会话、备忘数据）。 |
+| `react-native-mmkv` | 高性能本地键值存储（设置、会话、磁贴镜像）。 |
 | `react-native-nitro-modules` | MMKV v4 依赖的原生桥接运行时（**需 Development Build**）。 |
 | `@react-native-community/datetimepicker` | 系统日期时间选择器（提醒 / 截止日期）。 |
 | `react-native-reanimated` | 高性能动画（UI 线程）。 |

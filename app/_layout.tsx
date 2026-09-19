@@ -2,7 +2,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useFonts } from 'expo-font'
-import { Redirect, Stack, useRouter, useSegments } from 'expo-router'
+import { Redirect, Stack, useSegments } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
@@ -10,16 +10,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import 'react-native-reanimated'
 
 import { useAppColorScheme } from '@/components/useAppColorScheme'
+import { useAgentStore } from '@/stores/agentStore'
 import { useAuthStore } from '@/stores/authStore'
-import { subscribeMemoPersistence, useMemoStore } from '@/stores/memoStore'
 import { useSettingsStore } from '@/stores/settingsStore'
-import {
-  ensureAndroidChannel,
-  rescheduleAllPending,
-  subscribeNotificationResponse
-} from '@/services/notifications'
+import { useTileStore } from '@/stores/tileStore'
 
-import '@/i18n'
 import i18n from '@/i18n'
 import '../global.css'
 
@@ -35,42 +30,29 @@ const queryClient = new QueryClient()
 
 function AuthGate({ children }: { children: ReactNode }) {
   const segments = useSegments()
-  const router = useRouter()
   const isHydrated = useAuthStore((state) => state.isHydrated)
   const userId = useAuthStore((state) => state.userId)
-  const memoHydrated = useMemoStore((state) => state.isHydrated)
+  const tilesHydrated = useTileStore((state) => state.isHydrated)
 
-  useEffect(() => {
+  useEffect(function () {
     useAuthStore.getState().hydrate()
     useSettingsStore.getState().hydrate()
-    ensureAndroidChannel()
+    useAgentStore.getState().hydrate()
   }, [])
 
-  useEffect(() => {
+  useEffect(function () {
     const language = useSettingsStore.getState().language
-    i18n.changeLanguage(language)
+    void i18n.changeLanguage(language)
   }, [])
 
-  useEffect(() => {
-    if (userId && !memoHydrated) {
-      useMemoStore.getState().hydrate(userId)
-      rescheduleAllPending(useMemoStore.getState().items)
-      return subscribeMemoPersistence(userId)
-    }
-    return undefined
-  }, [userId, memoHydrated])
-
-  useEffect(() => {
-    return subscribeNotificationResponse(({ itemId, memoId }) => {
-      if (memoId) {
-        router.push(`/memo/${memoId}`)
-        return
+  useEffect(
+    function () {
+      if (userId && !tilesHydrated) {
+        useTileStore.getState().hydrate(userId)
       }
-      if (itemId) {
-        router.push({ pathname: '/checklist/new', params: { itemId } })
-      }
-    })
-  }, [router])
+    },
+    [userId, tilesHydrated]
+  )
 
   if (!isHydrated) {
     return null
@@ -95,15 +77,21 @@ export default function RootLayout() {
     ...FontAwesome.font
   })
 
-  useEffect(() => {
-    if (error) throw error
-  }, [error])
+  useEffect(
+    function () {
+      if (error) throw error
+    },
+    [error]
+  )
 
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync()
-    }
-  }, [loaded])
+  useEffect(
+    function () {
+      if (loaded) {
+        void SplashScreen.hideAsync()
+      }
+    },
+    [loaded]
+  )
 
   if (!loaded) {
     return null
@@ -125,28 +113,13 @@ function RootLayoutNav() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AuthGate>
         <Stack>
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(navigation)" options={{ headerShown: false }} />
           <Stack.Screen
-            name="memo/[id]"
-            options={{
-              title: 'Memo',
-              presentation: 'card'
-            }}
+            name="(auth)"
+            options={{ headerShown: false }}
           />
           <Stack.Screen
-            name="checklist/new"
-            options={{
-              title: 'Task',
-              presentation: 'modal'
-            }}
-          />
-          <Stack.Screen
-            name="trash"
-            options={{
-              title: 'Trash',
-              presentation: 'modal'
-            }}
+            name="(navigation)"
+            options={{ headerShown: false }}
           />
         </Stack>
       </AuthGate>

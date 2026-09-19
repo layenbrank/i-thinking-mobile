@@ -11,12 +11,20 @@ interface ScreenProps {
   edges?: ('top' | 'right' | 'bottom' | 'left')[]
 }
 
-function Screen({ children, scroll = false, padded = true, edges = ['top', 'left', 'right'] }: ScreenProps) {
+function Screen({
+  children,
+  scroll = false,
+  padded = true,
+  edges = ['top', 'left', 'right']
+}: ScreenProps) {
   const colors = useThemeColors()
   const contentClass = padded ? 'flex-1 px-5 py-4' : 'flex-1'
 
   return (
-    <SafeAreaView className="flex-1" edges={edges} style={{ backgroundColor: colors.background }}>
+    <SafeAreaView
+      className="flex-1"
+      edges={edges}
+      style={{ backgroundColor: colors.background }}>
       {scroll ? (
         <ScrollView
           className="flex-1"

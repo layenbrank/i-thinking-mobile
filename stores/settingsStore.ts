@@ -8,11 +8,9 @@ type LanguagePreference = 'zh' | 'en'
 interface SettingsState {
   theme: ThemePreference
   language: LanguagePreference
-  hideCompleted: boolean
   hydrate: () => void
   setTheme: (theme: ThemePreference) => void
   setLanguage: (language: LanguagePreference) => void
-  setHideCompleted: (hideCompleted: boolean) => void
 }
 
 const SETTINGS_KEY = 'app:settings'
@@ -20,19 +18,17 @@ const SETTINGS_KEY = 'app:settings'
 interface StoredSettings {
   theme: ThemePreference
   language: LanguagePreference
-  hideCompleted: boolean
 }
 
 function readSettings(): StoredSettings {
   const raw = mmkvStorage.getItem(SETTINGS_KEY)
   if (!raw) {
-    return { theme: 'system', language: 'zh', hideCompleted: false }
+    return { theme: 'system', language: 'zh' }
   }
   const parsed = JSON.parse(raw) as Partial<StoredSettings>
   return {
     theme: parsed.theme ?? 'system',
-    language: parsed.language ?? 'zh',
-    hideCompleted: parsed.hideCompleted ?? false
+    language: parsed.language ?? 'zh'
   }
 }
 
@@ -43,7 +39,6 @@ function writeSettings(settings: StoredSettings) {
 const useSettingsStore = create<SettingsState>((set) => ({
   theme: 'system',
   language: 'zh',
-  hideCompleted: false,
 
   hydrate() {
     set(readSettings())
@@ -59,12 +54,6 @@ const useSettingsStore = create<SettingsState>((set) => ({
     set({ language })
     const current = readSettings()
     writeSettings({ ...current, language })
-  },
-
-  setHideCompleted(hideCompleted) {
-    set({ hideCompleted })
-    const current = readSettings()
-    writeSettings({ ...current, hideCompleted })
   }
 }))
 

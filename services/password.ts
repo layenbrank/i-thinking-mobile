@@ -1,65 +1,45 @@
 import * as Crypto from 'expo-crypto'
 
-const HASH_PREFIX = 'v1'
-const SHA256_HEX_LENGTH = 64
-
-function bytesToHex(bytes: Uint8Array) {
-  return Array.from(bytes)
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('')
+/**
+ * Returns true when the stored value looks like a salted SHA-256 hash.
+ */
+function isHashedPassword(value: string) {
+  return value.startsWith('sha256$')
 }
 
 /**
- * Parses `v1$salt$digest` or legacy `salt:digest` stored passwords.
+ * Hashes a password with a random salt (local auth only).
  */
-function parseStoredPassword(stored: string): { salt: string; digest: string } | null {
-  if (stored.startsWith(`${HASH_PREFIX}$`)) {
-    const parts = stored.split('$')
-    if (parts.length !== 3 || !parts[1] || !parts[2]) {
-      return null
-    }
-    return { salt: parts[1], digest: parts[2] }
-  }
-
-  const separator = stored.indexOf(':')
-  if (separator <= 0) {
-    return null
-  }
-  const salt = stored.slice(0, separator)
-  const digest = stored.slice(separator + 1)
-  if (!salt || !digest) {
-    return null
-  }
-  return { salt, digest }
-}
-
 async function hashPassword(password: string) {
   const saltBytes = await Crypto.getRandomBytesAsync(16)
-  const salt = bytesToHex(saltBytes)
+  const salt = Array.from(saltBytes)
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
   const digest = await Crypto.digestStringAsync(
     Crypto.CryptoDigestAlgorithm.SHA256,
     `${salt}:${password}`
   )
-  if (!digest || digest.length !== SHA256_HEX_LENGTH) {
-    throw new Error('Password hashing failed')
-  }
-  return `${HASH_PREFIX}$${salt}$${digest}`
+  return `sha256$${salt}$${digest}`
 }
 
+/**
+ * Verifies a password against a salted hash or legacy plaintext.
+ */
 async function verifyPassword(password: string, stored: string) {
-  const parsed = parseStoredPassword(stored)
-  if (!parsed) {
+  if (!isHashedPassword(stored)) {
     return stored === password
+  }
+  const parts = stored.split('$')
+  const salt = parts[1]
+  const expected = parts[2]
+  if (!salt || !expected) {
+    return false
   }
   const digest = await Crypto.digestStringAsync(
     Crypto.CryptoDigestAlgorithm.SHA256,
-    `${parsed.salt}:${password}`
+    `${salt}:${password}`
   )
-  return digest === parsed.digest
-}
-
-function isHashedPassword(stored: string) {
-  return parseStoredPassword(stored) !== null
+  return digest === expected
 }
 
 export { hashPassword, isHashedPassword, verifyPassword }

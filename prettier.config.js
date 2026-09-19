@@ -1,7 +1,5 @@
-import { type Config } from 'prettier'
-import { options, parsers, printers } from 'prettier-plugin-tailwindcss'
-
-const config: Config = {
+/** @type {import('prettier').Config} */
+module.exports = {
   printWidth: 100,
   tabWidth: 2,
   singleQuote: true,
@@ -9,12 +7,10 @@ const config: Config = {
   arrowParens: 'always',
   bracketSpacing: true,
   singleAttributePerLine: true,
-  endOfLine: 'crlf',
+  endOfLine: 'lf',
   semi: false,
   trailingComma: 'none',
   useTabs: false,
   tailwindAttributes: ['className'],
-  plugins: [parsers]
+  plugins: ['prettier-plugin-tailwindcss']
 }
-
-export default config
