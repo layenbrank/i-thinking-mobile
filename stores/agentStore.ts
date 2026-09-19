@@ -1,16 +1,20 @@
 import { create } from 'zustand'
 
-import { POST_CHAT_STREAM } from '@/api/gateway'
+import { GET_MODELS, POST_CHAT_STREAM } from '@/api/gateway'
+import { isApiSuccess } from '@/api/http'
 import { findDefaultModel } from '@/constants/config'
-import type { ChatCompletionMessage, ChatMessage } from '@/types/chat'
+import type { ChatCompletionMessage, ChatMessage, GatewayModel } from '@/types/chat'
 
 interface AgentState {
   messages: ChatMessage[]
+  models: GatewayModel[]
   model: string
   isStreaming: boolean
+  isLoadingModels: boolean
   error: string | null
-  hydrate: () => void
+  hydrate: (token: string | null) => Promise<void>
   clear: () => void
+  setModel: (model: string) => void
   send: (token: string, content: string) => Promise<void>
   abort: () => void
 }
@@ -31,18 +35,46 @@ function toCompletionMessages(messages: ChatMessage[]): ChatCompletionMessage[] 
 
 const useAgentStore = create<AgentState>((set, get) => ({
   messages: [],
+  models: [],
   model: findDefaultModel(),
   isStreaming: false,
+  isLoadingModels: false,
   error: null,
 
-  hydrate() {
-    set({ model: findDefaultModel(), error: null })
+  async hydrate(token) {
+    set({ model: get().model || findDefaultModel(), error: null })
+    if (!token) {
+      return
+    }
+    set({ isLoadingModels: true })
+    try {
+      const result = await GET_MODELS(token)
+      if (!isApiSuccess(result.code)) {
+        set({ error: result.msg, isLoadingModels: false })
+        return
+      }
+      const enabled = (result.data ?? []).filter((item) => item.enabled)
+      const preferred =
+        enabled.find((item) => item.name === get().model)?.name ||
+        enabled[0]?.name ||
+        findDefaultModel()
+      set({ models: enabled, model: preferred, isLoadingModels: false })
+    } catch (error) {
+      set({
+        isLoadingModels: false,
+        error: error instanceof Error ? error.message : 'Failed to load models'
+      })
+    }
   },
 
   clear() {
     abortController?.abort()
     abortController = null
     set({ messages: [], isStreaming: false, error: null })
+  },
+
+  setModel(model) {
+    set({ model })
   },
 
   abort() {

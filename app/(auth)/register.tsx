@@ -6,11 +6,13 @@ import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Text, View } from 'react-native'
 import { z } from 'zod'
 
+import { useSlideProof } from '@/components/auth/SlideCaptcha'
 import { FormField } from '@/components/ui/FormField'
 import { PrimaryButton } from '@/components/ui/PrimaryButton'
 import { Screen } from '@/components/ui/Screen'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useThemeColors } from '@/components/ui/useThemeColors'
+import { findApiBaseUrl } from '@/constants/config'
 import { useAuthStore } from '@/stores/authStore'
 
 const schema = z
@@ -31,6 +33,7 @@ export default function RegisterScreen() {
   const colors = useThemeColors()
   const signUp = useAuthStore((state) => state.signUp)
   const isLoading = useAuthStore((state) => state.isLoading)
+  const { askSlide, dialog } = useSlideProof()
 
   const {
     control,
@@ -42,7 +45,18 @@ export default function RegisterScreen() {
   })
 
   async function onSubmit(data: FormData) {
-    const error = await signUp({ username: data.username, password: data.password })
+    const proof = await askSlide()
+    if (!proof) {
+      return
+    }
+
+    const error = await signUp({
+      username: data.username,
+      password: data.password,
+      captchaKey: proof.captchaKey,
+      captchaValue: proof.captchaValue,
+      captchaKind: proof.captchaKind
+    })
     if (error) {
       Alert.alert(t('signUp'), error)
       return
@@ -52,10 +66,11 @@ export default function RegisterScreen() {
 
   return (
     <Screen scroll>
+      {dialog}
       <SectionHeader
         icon={UserPlus}
         title={t('signUp')}
-        description={t('welcome')}
+        description={`${t('welcome')}\n${findApiBaseUrl()}`}
       />
 
       <View className="gap-5">

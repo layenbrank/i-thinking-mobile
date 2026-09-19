@@ -19,10 +19,17 @@ interface ChatCompletionBody {
   temperature?: number
 }
 
+/** Aligns with rust-service `ModelR`. */
 interface GatewayModel {
   id: string
+  providerID: string
   name: string
-  label?: string
+  label: string
+  allowRoles?: string[] | null
+  enabled: boolean
+  dailyTokenQuota: number
+  createdAt: number
+  updatedAt: number
 }
 
 export type { ChatCompletionBody, ChatCompletionMessage, ChatMessage, ChatRole, GatewayModel }

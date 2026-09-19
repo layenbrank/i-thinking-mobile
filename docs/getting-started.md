@@ -3,53 +3,50 @@
 ## 环境
 
 - Node 22+
-- Bun 或 pnpm
-- Expo SDK 54 Development Build（推荐）或 Expo Go（MMKV 会回落到内存存储）
+- pnpm
+- 本地 [rust-service](https://github.com/layenbrank/rust-service)（默认 `http://127.0.0.1:3000`）
+- Expo SDK 54 Development Build（推荐）
 
 ```bash
-bun install
-bun run dev
+pnpm install
+pnpm run dev
 ```
 
 ## 产品形态
 
-本应用**不是**备忘录 / 清单示例。主界面为：
-
 1. **磁贴**：Studio 风格磁贴网格（本地持久化）
-2. **Agent**：对话页，对接 rust-service gateway SSE
-3. **设置**：主题、语言、清空对话、退出
+2. **Agent**：gateway 模型列表 + SSE 对话
+3. **设置**：主题、语言、清空对话、退出（`POST /auth/signout`）
 
-## 对接 rust-service
+## 认证链路（与 rust-service 对齐）
 
-1. 启动 [rust-service](https://github.com/layenbrank/rust-service)（默认 `http://127.0.0.1:3000`）
-2. 配置：
+```text
+POST /api/v1/auth/captcha
+  → 滑块得到 captchaKey + captchaValue("x,y")
+POST /api/v1/auth/signin | /signup
+  → data.token (JWT)
+GET  /api/v1/auth/profile   # hydrate 校验
+POST /api/v1/auth/signout   # Redis 黑名单
+```
+
+Body 字段均为 camelCase：`username`、`password`、`captchaKey`、`captchaValue`、`captchaKind`。
+
+成功信封：`code === 200000`。
+
+## Agent 链路
+
+```text
+GET  /api/v1/gateway/models
+POST /api/v1/gateway/chat/completions  # stream: true，XHR progressive
+```
+
+可选请求头：`X-Tenant-ID`。
+
+## 配置
+
+`app.json` → `expo.extra.apiBaseUrl` 或：
 
 ```bash
 export EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:3000
-export EXPO_PUBLIC_AUTH_MODE=remote
-export EXPO_PUBLIC_DEFAULT_MODEL=gpt-4o-mini
-bun run dev
+pnpm run dev
 ```
-
-或在 `app.json` 的 `expo.extra` 中写入同名配置。
-
-3. 登录使用 **username + password**（与 rust-service `/api/v1/auth/signin` 一致）
-4. Agent 调用 `POST /api/v1/gateway/chat/completions`（`Authorization: Bearer <JWT>`）
-
-真机访问本机服务时，将 `127.0.0.1` 换成局域网 IP，并确认 CORS / 防火墙。
-
-## 本地演示模式
-
-未配置 `apiBaseUrl` 时默认 `authMode=local`：
-
-- 注册 / 登录写入 MMKV
-- Agent 返回本地演示流式回显（提示配置 API）
-
-## 与桌面参考的对应关系
-
-| 桌面 | 移动端 |
-|------|--------|
-| `apps/studio` 磁贴壳 + Agent 窗 | 本仓库 Tabs：磁贴 / Agent |
-| `packages/shared` MagneticTile | `types/magnetic-tile.ts` + `stores/tileStore.ts` |
-| Nest / 计划中的云端对话 | rust-service gateway |
-| corex sidecar | 桌面自动化，移动端不嵌入 |

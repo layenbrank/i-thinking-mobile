@@ -1,52 +1,20 @@
-import { API_PATHS, API_SUCCESS_CODE, CAPTCHA_PLACEHOLDER } from '@/constants/api'
-import { findAuthMode } from '@/constants/config'
-import { ApiError, isApiSuccess, requestJson } from '@/api/http'
-import { hashPassword, isHashedPassword, verifyPassword } from '@/services/password'
+import { API_PATHS } from '@/constants/api'
+import { ApiError, assertApiSuccess, isApiSuccess, requestJson } from '@/api/http'
 import { mmkvStorage } from '@/stores/storage'
 import type {
+  CaptchaChallenge,
+  PasswordChangeBody,
   Profile,
+  ProfileUpdateBody,
   Session,
   SignInBody,
   SignInResult,
   SignUpBody,
-  StoredLocalUser
+  SlideProof
 } from '@/types/auth'
 import type { RSF } from '@/types/response'
 
-const USERS_KEY = 'auth:users'
 const SESSION_KEY = 'auth:session'
-
-function envelope<T>(data: T, msg = 'ok'): RSF<T> {
-  return {
-    code: API_SUCCESS_CODE,
-    success: true,
-    msg,
-    data,
-    timestamp: Date.now()
-  }
-}
-
-function fail<T>(code: number, msg: string): RSF<T> {
-  return {
-    code,
-    success: false,
-    msg,
-    data: null as T,
-    timestamp: Date.now()
-  }
-}
-
-function readUsers(): StoredLocalUser[] {
-  const raw = mmkvStorage.getItem(USERS_KEY)
-  if (!raw) {
-    return []
-  }
-  return JSON.parse(raw) as StoredLocalUser[]
-}
-
-function writeUsers(users: StoredLocalUser[]) {
-  mmkvStorage.setItem(USERS_KEY, JSON.stringify(users))
-}
 
 function writeSession(session: Session) {
   mmkvStorage.setItem(SESSION_KEY, JSON.stringify(session))
@@ -64,94 +32,58 @@ function findSession(): Session | null {
   return JSON.parse(raw) as Session
 }
 
-function withCaptcha(body: SignInBody | SignUpBody) {
+function rememberSession(result: SignInResult) {
+  writeSession({
+    token: result.token,
+    userId: result.id,
+    username: result.username
+  })
+}
+
+function fail<T>(code: number, msg: string): RSF<T> {
   return {
-    username: body.username.trim(),
-    password: body.password,
-    captchaKey: body.captchaKey ?? CAPTCHA_PLACEHOLDER.captchaKey,
-    captchaValue: body.captchaValue ?? CAPTCHA_PLACEHOLDER.captchaValue,
-    captchaKind: body.captchaKind
+    code,
+    success: false,
+    msg,
+    data: null as T,
+    timestamp: Date.now()
   }
 }
 
-async function POST_SIGNUP_LOCAL(data: SignUpBody): Promise<RSF<SignInResult>> {
-  const username = data.username.trim()
-  if (!username || !data.password) {
-    return fail(400001, 'Username and password are required')
+/**
+ * POST /api/v1/auth/captcha — fetch go-captcha challenge.
+ */
+async function POST_CAPTCHA(kind?: string): Promise<RSF<CaptchaChallenge>> {
+  try {
+    return await requestJson<CaptchaChallenge>(API_PATHS.AUTH_CAPTCHA, {
+      method: 'POST',
+      body: kind ? { kind } : {}
+    })
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return fail(error.code, error.message)
+    }
+    return fail(500000, error instanceof Error ? error.message : 'Captcha failed')
   }
-
-  const users = readUsers()
-  if (users.some((user) => user.username === username)) {
-    return fail(409001, 'Username already registered')
-  }
-
-  const now = Date.now()
-  const user: StoredLocalUser = {
-    id: `local-${now}`,
-    username,
-    password: await hashPassword(data.password),
-    createdAt: now,
-    updatedAt: now
-  }
-  users.push(user)
-  writeUsers(users)
-
-  const token = `local-token-${user.id}`
-  writeSession({ token, userId: user.id, username: user.username })
-
-  return envelope({
-    token,
-    id: user.id,
-    username: user.username,
-    role: 'USER',
-    status: 'ACTIVE',
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt
-  })
 }
 
-async function POST_SIGNIN_LOCAL(data: SignInBody): Promise<RSF<SignInResult>> {
-  const username = data.username.trim()
-  const user = readUsers().find((item) => item.username === username)
-  if (!user || !(await verifyPassword(data.password, user.password))) {
-    return fail(401001, 'Invalid username or password')
-  }
-
-  if (!isHashedPassword(user.password)) {
-    user.password = await hashPassword(data.password)
-    writeUsers(readUsers().map((entry) => (entry.id === user.id ? user : entry)))
-  }
-
-  const token = `local-token-${user.id}`
-  writeSession({ token, userId: user.id, username: user.username })
-
-  return envelope({
-    token,
-    id: user.id,
-    username: user.username,
-    role: 'USER',
-    status: 'ACTIVE',
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt
-  })
-}
-
+/**
+ * POST /api/v1/auth/signup — register via rust-service.
+ */
 async function POST_SIGNUP(data: SignUpBody): Promise<RSF<SignInResult>> {
-  if (findAuthMode() === 'local') {
-    return POST_SIGNUP_LOCAL(data)
-  }
-
   try {
     const result = await requestJson<SignInResult>(API_PATHS.AUTH_SIGNUP, {
       method: 'POST',
-      body: withCaptcha(data)
+      body: {
+        username: data.username.trim(),
+        password: data.password,
+        captchaKey: data.captchaKey,
+        captchaValue: data.captchaValue,
+        captchaKind: data.captchaKind
+      }
     })
     if (isApiSuccess(result.code) && result.data?.token) {
-      writeSession({
-        token: result.data.token,
-        userId: result.data.id,
-        username: result.data.username
-      })
+      rememberSession(result.data)
     }
     return result
   } catch (error) {
@@ -162,22 +94,23 @@ async function POST_SIGNUP(data: SignUpBody): Promise<RSF<SignInResult>> {
   }
 }
 
+/**
+ * POST /api/v1/auth/signin — password login via rust-service.
+ */
 async function POST_SIGNIN(data: SignInBody): Promise<RSF<SignInResult>> {
-  if (findAuthMode() === 'local') {
-    return POST_SIGNIN_LOCAL(data)
-  }
-
   try {
     const result = await requestJson<SignInResult>(API_PATHS.AUTH_SIGNIN, {
       method: 'POST',
-      body: withCaptcha(data)
+      body: {
+        username: data.username.trim(),
+        password: data.password,
+        captchaKey: data.captchaKey,
+        captchaValue: data.captchaValue,
+        captchaKind: data.captchaKind
+      }
     })
     if (isApiSuccess(result.code) && result.data?.token) {
-      writeSession({
-        token: result.data.token,
-        userId: result.data.id,
-        username: result.data.username
-      })
+      rememberSession(result.data)
     }
     return result
   } catch (error) {
@@ -188,47 +121,101 @@ async function POST_SIGNIN(data: SignInBody): Promise<RSF<SignInResult>> {
   }
 }
 
+/**
+ * POST /api/v1/auth/signout — blacklist JWT on rust-service.
+ */
 async function POST_SIGNOUT(token?: string | null): Promise<RSF<null>> {
-  if (findAuthMode() === 'remote' && token) {
-    try {
+  try {
+    if (token) {
       await requestJson<null>(API_PATHS.AUTH_SIGNOUT, {
         method: 'POST',
         token
       })
-    } catch {
-      // Local session is cleared regardless of remote outcome.
     }
+  } catch {
+    // Always clear local session.
   }
   clearSession()
-  return envelope(null)
-}
-
-async function GET_PROFILE(token: string): Promise<RSF<Profile>> {
-  if (findAuthMode() === 'local') {
-    const session = findSession()
-    if (!session || session.token !== token) {
-      return fail(401000, 'Unauthorized')
-    }
-    const user = readUsers().find((item) => item.id === session.userId)
-    if (!user) {
-      return fail(401000, 'Unauthorized')
-    }
-    return envelope({
-      id: user.id,
-      username: user.username,
-      role: 'USER',
-      status: 'ACTIVE',
-      email: null,
-      phone: null,
-      gender: null,
-      birthday: null,
-      age: null,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt
-    })
+  return {
+    code: 200000,
+    success: true,
+    msg: 'ok',
+    data: null,
+    timestamp: Date.now()
   }
-
-  return requestJson<Profile>(API_PATHS.AUTH_PROFILE, { token })
 }
 
-export { GET_PROFILE, POST_SIGNIN, POST_SIGNOUT, POST_SIGNUP, findSession }
+/**
+ * GET /api/v1/auth/profile
+ */
+async function GET_PROFILE(token: string): Promise<RSF<Profile>> {
+  try {
+    return await requestJson<Profile>(API_PATHS.AUTH_PROFILE, { token })
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return fail(error.code, error.message)
+    }
+    return fail(500000, error instanceof Error ? error.message : 'Profile failed')
+  }
+}
+
+/**
+ * PUT /api/v1/auth/profile
+ */
+async function PUT_PROFILE(token: string, body: ProfileUpdateBody): Promise<RSF<Profile>> {
+  try {
+    return await requestJson<Profile>(API_PATHS.AUTH_PROFILE, {
+      method: 'PUT',
+      token,
+      body
+    })
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return fail(error.code, error.message)
+    }
+    return fail(500000, error instanceof Error ? error.message : 'Profile update failed')
+  }
+}
+
+/**
+ * PUT /api/v1/auth/password
+ */
+async function PUT_PASSWORD(token: string, body: PasswordChangeBody): Promise<RSF<null>> {
+  try {
+    const result = await requestJson<null>(API_PATHS.AUTH_PASSWORD, {
+      method: 'PUT',
+      token,
+      body
+    })
+    if (isApiSuccess(result.code)) {
+      clearSession()
+    }
+    return result
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return fail(error.code, error.message)
+    }
+    return fail(500000, error instanceof Error ? error.message : 'Password change failed')
+  }
+}
+
+/**
+ * Convenience unwrap used by UI flows that prefer thrown errors.
+ */
+async function fetchCaptchaChallenge(kind?: string) {
+  return assertApiSuccess(await POST_CAPTCHA(kind))
+}
+
+export type { SlideProof }
+export {
+  GET_PROFILE,
+  POST_CAPTCHA,
+  POST_SIGNIN,
+  POST_SIGNOUT,
+  POST_SIGNUP,
+  PUT_PASSWORD,
+  PUT_PROFILE,
+  clearSession,
+  fetchCaptchaChallenge,
+  findSession
+}
