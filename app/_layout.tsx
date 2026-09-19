@@ -10,7 +10,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import 'react-native-reanimated'
 
 import { useAppColorScheme } from '@/components/useAppColorScheme'
-import { useAgentStore } from '@/stores/agentStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useTileStore } from '@/stores/tileStore'
@@ -35,9 +34,8 @@ function AuthGate({ children }: { children: ReactNode }) {
   const tilesHydrated = useTileStore((state) => state.isHydrated)
 
   useEffect(function () {
-    useAuthStore.getState().hydrate()
+    void useAuthStore.getState().hydrate()
     useSettingsStore.getState().hydrate()
-    useAgentStore.getState().hydrate()
   }, [])
 
   useEffect(function () {

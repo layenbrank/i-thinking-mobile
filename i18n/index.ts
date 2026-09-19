@@ -24,10 +24,10 @@ const resources = {
       agentPlaceholder: 'Ask the agent…',
       agentThinking: 'Thinking…',
       agentModel: 'Model',
+      agentNoModels: 'No gateway models available for this account',
       settings: 'Settings',
       settingsSubtitle: 'Account, appearance, and Agent',
-      authModeLocal: 'Local demo mode (no API base URL)',
-      authModeRemote: 'Connected',
+      authModeRemote: 'rust-service',
       clearAgent: 'Clear agent chat',
       clearAgentDone: 'Conversation cleared',
       aboutStudio: 'Tiles & Agent inspired by i-thinking Studio / CoreX / rust-service',
@@ -42,7 +42,13 @@ const resources = {
       passwordMin: 'Password must be at least 6 characters',
       passwordMismatch: 'Passwords do not match',
       version: 'Version',
-      chooseOption: 'Choose an option'
+      chooseOption: 'Choose an option',
+      account: 'Account',
+      captchaTitle: 'Security check',
+      captchaHint: 'Drag the slider to complete the puzzle.',
+      captchaLoading: 'Loading captcha…',
+      captchaLoadFailed: 'Failed to load captcha',
+      captchaRefresh: 'Refresh'
     }
   },
   zh: {
@@ -67,10 +73,10 @@ const resources = {
       agentPlaceholder: '向 Agent 提问…',
       agentThinking: '思考中…',
       agentModel: '模型',
+      agentNoModels: '当前账号暂无可用 gateway 模型',
       settings: '设置',
       settingsSubtitle: '账号、外观与 Agent',
-      authModeLocal: '本地演示模式（未配置 API）',
-      authModeRemote: '已连接',
+      authModeRemote: 'rust-service',
       clearAgent: '清空 Agent 对话',
       clearAgentDone: '对话已清空',
       aboutStudio: '磁贴与 Agent 参考 i-thinking Studio / CoreX / rust-service',
@@ -85,7 +91,13 @@ const resources = {
       passwordMin: '密码至少 6 位',
       passwordMismatch: '两次密码不一致',
       version: '版本',
-      chooseOption: '请选择'
+      chooseOption: '请选择',
+      account: '账号',
+      captchaTitle: '安全验证',
+      captchaHint: '拖动滑块完成拼图。',
+      captchaLoading: '正在加载验证码…',
+      captchaLoadFailed: '验证码加载失败',
+      captchaRefresh: '刷新'
     }
   }
 }

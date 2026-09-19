@@ -9,7 +9,7 @@ import { Screen } from '@/components/ui/Screen'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { SettingsLinkRow } from '@/components/ui/SwitchRow'
 import { useThemeColors } from '@/components/ui/useThemeColors'
-import { findApiBaseUrl, findAuthMode } from '@/constants/config'
+import { findApiBaseUrl } from '@/constants/config'
 import i18n from '@/i18n'
 import { useAgentStore } from '@/stores/agentStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -31,6 +31,7 @@ export default function SettingsScreen() {
   const { t } = useTranslation()
   const colors = useThemeColors()
   const username = useAuthStore((state) => state.username)
+  const profile = useAuthStore((state) => state.profile)
   const signOut = useAuthStore((state) => state.signOut)
   const theme = useSettingsStore((state) => state.theme)
   const language = useSettingsStore((state) => state.language)
@@ -110,7 +111,12 @@ export default function SettingsScreen() {
           <Text
             className="text-xs"
             style={{ color: colors.textSecondary }}>
-            {findAuthMode() === 'remote' ? findApiBaseUrl() : t('authModeLocal')}
+            {profile?.email || profile?.role || t('account')}
+          </Text>
+          <Text
+            className="text-xs"
+            style={{ color: colors.textSecondary }}>
+            {findApiBaseUrl()}
           </Text>
         </View>
       </View>

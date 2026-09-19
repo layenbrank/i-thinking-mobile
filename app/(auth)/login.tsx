@@ -6,11 +6,13 @@ import { useTranslation } from 'react-i18next'
 import { Alert, Pressable, Text, View } from 'react-native'
 import { z } from 'zod'
 
+import { useSlideProof } from '@/components/auth/SlideCaptcha'
 import { FormField } from '@/components/ui/FormField'
 import { PrimaryButton } from '@/components/ui/PrimaryButton'
 import { Screen } from '@/components/ui/Screen'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useThemeColors } from '@/components/ui/useThemeColors'
+import { findApiBaseUrl } from '@/constants/config'
 import { useAuthStore } from '@/stores/authStore'
 
 const schema = z.object({
@@ -25,6 +27,7 @@ export default function LoginScreen() {
   const colors = useThemeColors()
   const signIn = useAuthStore((state) => state.signIn)
   const isLoading = useAuthStore((state) => state.isLoading)
+  const { askSlide, dialog } = useSlideProof()
 
   const {
     control,
@@ -36,7 +39,18 @@ export default function LoginScreen() {
   })
 
   async function onSubmit(data: FormData) {
-    const error = await signIn(data)
+    const proof = await askSlide()
+    if (!proof) {
+      return
+    }
+
+    const error = await signIn({
+      username: data.username,
+      password: data.password,
+      captchaKey: proof.captchaKey,
+      captchaValue: proof.captchaValue,
+      captchaKind: proof.captchaKind
+    })
     if (error) {
       Alert.alert(t('signIn'), error)
       return
@@ -46,10 +60,11 @@ export default function LoginScreen() {
 
   return (
     <Screen scroll>
+      {dialog}
       <SectionHeader
         icon={LogIn}
         title={t('signIn')}
-        description={t('welcome')}
+        description={`${t('welcome')}\n${findApiBaseUrl()}`}
       />
 
       <View className="gap-5">

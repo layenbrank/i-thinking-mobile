@@ -1,17 +1,17 @@
-interface SignInBody {
-  username: string
-  password: string
-  captchaKey?: string
-  captchaValue?: string
+interface SlideProof {
+  captchaKey: string
+  captchaValue: string
   captchaKind?: string
 }
 
-interface SignUpBody {
+interface SignInBody extends SlideProof {
   username: string
   password: string
-  captchaKey?: string
-  captchaValue?: string
-  captchaKind?: string
+}
+
+interface SignUpBody extends SlideProof {
+  username: string
+  password: string
 }
 
 interface AuthUser {
@@ -27,12 +27,44 @@ interface SignInResult extends AuthUser {
   token: string
 }
 
+interface Avatar {
+  id: string
+  url: string
+  mime: string
+  name: string
+}
+
 interface Profile extends AuthUser {
   email: string | null
   phone: string | null
   gender: string | null
   birthday: string | null
   age: number | null
+  avatar: Avatar | null
+}
+
+interface ProfileUpdateBody {
+  email?: string | null
+  phone?: string | null
+  gender?: 'MALE' | 'FEMALE' | null
+  birthday?: string | null
+  avatar?: string | null
+}
+
+interface PasswordChangeBody {
+  oldPassword: string
+  newPassword: string
+}
+
+interface CaptchaChallenge {
+  kind: string
+  captchaKey: string
+  masterImage: string
+  thumbImage: string
+  thumbX: number
+  thumbY: number
+  thumbWidth: number
+  thumbHeight: number
 }
 
 interface Session {
@@ -41,12 +73,16 @@ interface Session {
   username: string
 }
 
-interface StoredLocalUser {
-  id: string
-  username: string
-  password: string
-  createdAt: number
-  updatedAt: number
+export type {
+  AuthUser,
+  Avatar,
+  CaptchaChallenge,
+  PasswordChangeBody,
+  Profile,
+  ProfileUpdateBody,
+  Session,
+  SignInBody,
+  SignInResult,
+  SignUpBody,
+  SlideProof
 }
-
-export type { AuthUser, Profile, Session, SignInBody, SignInResult, SignUpBody, StoredLocalUser }

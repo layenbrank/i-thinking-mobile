@@ -1,4 +1,4 @@
-import { API_SUCCESS_CODE } from '@/constants/api'
+import { API_PATHS, API_SUCCESS_CODE } from '@/constants/api'
 import { findApiBaseUrl } from '@/constants/config'
 import type { RSF } from '@/types/response'
 
@@ -32,7 +32,43 @@ function buildUrl(path: string) {
 }
 
 /**
- * Performs JSON request and unwraps rust-service envelope when present.
+ * Returns true when envelope indicates business success (`200000`).
+ */
+function isApiSuccess(code: number) {
+  return code === API_SUCCESS_CODE
+}
+
+/**
+ * Parses rust-service JSON envelope from a fetch Response.
+ */
+async function parseEnvelope<T>(response: Response): Promise<RSF<T>> {
+  const payload = (await response.json()) as Partial<RSF<T>> & { message?: string }
+
+  if (typeof payload.code === 'number') {
+    return {
+      code: payload.code,
+      success: payload.success ?? isApiSuccess(payload.code),
+      msg: payload.msg ?? payload.message ?? '',
+      data: (payload.data as T) ?? (null as T),
+      timestamp: payload.timestamp ?? Date.now()
+    }
+  }
+
+  if (!response.ok) {
+    throw new ApiError(response.status, payload.msg ?? payload.message ?? response.statusText)
+  }
+
+  return {
+    code: API_SUCCESS_CODE,
+    success: true,
+    msg: 'ok',
+    data: payload as T,
+    timestamp: Date.now()
+  }
+}
+
+/**
+ * Performs JSON request against rust-service and returns the business envelope.
  */
 async function requestJson<T>(path: string, options: RequestOptions = {}): Promise<RSF<T>> {
   const headers: Record<string, string> = {
@@ -53,36 +89,17 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
     signal: options.signal
   })
 
-  const payload = (await response.json()) as Partial<RSF<T>> & { message?: string }
-
-  if (typeof payload.code === 'number' && typeof payload.success === 'boolean') {
-    return {
-      code: payload.code,
-      success: payload.success,
-      msg: payload.msg ?? payload.message ?? '',
-      data: payload.data as T,
-      timestamp: payload.timestamp ?? Date.now()
-    }
-  }
-
-  if (!response.ok) {
-    throw new ApiError(response.status, payload.msg ?? payload.message ?? response.statusText)
-  }
-
-  return {
-    code: API_SUCCESS_CODE,
-    success: true,
-    msg: 'ok',
-    data: payload as T,
-    timestamp: Date.now()
-  }
+  return parseEnvelope<T>(response)
 }
 
 /**
- * Returns true when envelope indicates business success.
+ * Throws ApiError when envelope is not successful.
  */
-function isApiSuccess(code: number) {
-  return code === API_SUCCESS_CODE || code === 0
+function assertApiSuccess<T>(result: RSF<T>): T {
+  if (!isApiSuccess(result.code)) {
+    throw new ApiError(result.code, result.msg || 'Request failed')
+  }
+  return result.data
 }
 
-export { ApiError, buildUrl, isApiSuccess, requestJson }
+export { ApiError, assertApiSuccess, buildUrl, isApiSuccess, parseEnvelope, requestJson }

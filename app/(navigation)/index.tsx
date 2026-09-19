@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { TileGrid } from '@/components/tiles/TileGrid'
 import { Screen } from '@/components/ui/Screen'
 import { useThemeColors } from '@/components/ui/useThemeColors'
-import { findAuthMode, findApiBaseUrl } from '@/constants/config'
+import { findApiBaseUrl } from '@/constants/config'
 import { useAuthStore } from '@/stores/authStore'
 import { useTileStore } from '@/stores/tileStore'
 
@@ -18,13 +18,11 @@ export default function TilesScreen() {
   const tiles = useTileStore((state) => state.tiles)
   const isHydrated = useTileStore((state) => state.isHydrated)
   const hydrate = useTileStore((state) => state.hydrate)
-  const mode = findAuthMode()
-  const apiBase = findApiBaseUrl()
 
   useEffect(
     function () {
       if (userId && !isHydrated) {
-        hydrate(userId)
+        void hydrate(userId)
       }
     },
     [userId, isHydrated, hydrate]
@@ -51,7 +49,7 @@ export default function TilesScreen() {
           <Text
             className="text-xs"
             style={{ color: colors.textSecondary }}>
-            {mode === 'remote' ? `${t('authModeRemote')}: ${apiBase}` : t('authModeLocal')}
+            {t('authModeRemote')}: {findApiBaseUrl()}
           </Text>
         </View>
         <TileGrid tiles={tiles} />
