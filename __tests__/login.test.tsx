@@ -10,19 +10,19 @@ jest.mock('expo-router', () => ({
 jest.mock('@/stores/authStore', () => ({
   useAuthStore: (selector: (state: { signIn: jest.Mock; isLoading: boolean }) => unknown) =>
     selector({
-      signIn: jest.fn(async () => 'Invalid email or password'),
+      signIn: jest.fn(async () => 'Invalid username or password'),
       isLoading: false
     })
 }))
 
 describe('LoginScreen', () => {
   test('shows validation error on empty submit', async () => {
-    const { getByText } = render(<LoginScreen />)
+    const { getByRole, getByText } = render(<LoginScreen />)
 
-    fireEvent.press(getByText('登录'))
+    fireEvent.press(getByRole('button', { name: '登录' }))
 
     await waitFor(() => {
-      expect(getByText('邮箱格式不正确')).toBeTruthy()
+      expect(getByText('用户名至少 2 个字符')).toBeTruthy()
     })
   })
 })

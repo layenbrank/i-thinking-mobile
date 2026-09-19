@@ -8,9 +8,7 @@
     "scheme": "ithinking",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -18,10 +16,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ithinking.app",
-      "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
-      }
+      "bundleIdentifier": "com.ithinking.app"
     },
     "android": {
       "package": "com.ithinking.app",
@@ -30,13 +25,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "permissions": [
-        "android.permission.SCHEDULE_EXACT_ALARM",
-        "android.permission.POST_NOTIFICATIONS",
-        "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.VIBRATE"
-      ]
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "bundler": "metro",
@@ -52,18 +41,15 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-localization",
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/images/icon.png",
-          "color": "#1E3A8A",
-          "sounds": []
-        }
-      ]
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "apiBaseUrl": "",
+      "authMode": "local",
+      "defaultModel": "gpt-4o-mini"
     }
   }
 }

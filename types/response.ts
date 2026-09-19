@@ -1,13 +1,18 @@
+/**
+ * rust-service success envelope (HTTP 200; business result in `code`).
+ */
 interface RSF<T> {
   code: number
-  message: string
+  success: boolean
+  msg: string
   data: T
+  timestamp: number
 }
 
-interface RSP<T> {
-  code: number
-  message: string
-  data: T
+/**
+ * Paginated envelope.
+ */
+interface RSP<T> extends RSF<T> {
   total: number
 }
 

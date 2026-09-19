@@ -17,13 +17,22 @@ function SectionHeader({ title, description, icon, trailing }: SectionHeaderProp
 
   return (
     <View className="mb-4 flex-row items-start gap-3">
-      {icon ? <IconBadge icon={icon} size="md" /> : null}
+      {icon ? (
+        <IconBadge
+          icon={icon}
+          size="md"
+        />
+      ) : null}
       <View className="min-w-0 flex-1 gap-1">
-        <Text className="text-xl font-bold tracking-tight" style={{ color: colors.text }}>
+        <Text
+          className="text-xl font-bold tracking-tight"
+          style={{ color: colors.text }}>
           {title}
         </Text>
         {description ? (
-          <Text className="text-sm leading-5" style={{ color: colors.textSecondary }}>
+          <Text
+            className="text-sm leading-5"
+            style={{ color: colors.textSecondary }}>
             {description}
           </Text>
         ) : null}

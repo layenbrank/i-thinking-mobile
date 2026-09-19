@@ -1,4 +1,3 @@
-import { DELETE_ACCOUNT } from '@/api/auth'
 import { create } from 'zustand'
 
 import { POST_SIGNIN, POST_SIGNOUT, POST_SIGNUP, findSession } from '@/api/auth'
@@ -6,7 +5,7 @@ import type { SignInBody, SignUpBody } from '@/types/auth'
 
 interface AuthState {
   userId: string | null
-  email: string | null
+  username: string | null
   token: string | null
   isHydrated: boolean
   isLoading: boolean
@@ -14,12 +13,11 @@ interface AuthState {
   signIn: (data: SignInBody) => Promise<string | null>
   signUp: (data: SignUpBody) => Promise<string | null>
   signOut: () => Promise<void>
-  deleteAccount: () => Promise<string | null>
 }
 
 const useAuthStore = create<AuthState>((set, get) => ({
   userId: null,
-  email: null,
+  username: null,
   token: null,
   isHydrated: false,
   isLoading: false,
@@ -29,7 +27,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
     if (session) {
       set({
         userId: session.userId,
-        email: session.email,
+        username: session.username,
         token: session.token,
         isHydrated: true
       })
@@ -42,12 +40,12 @@ const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true })
     try {
       const result = await POST_SIGNIN(data)
-      if (result.code !== 0) {
-        return result.message
+      if (!result.success) {
+        return result.msg
       }
       set({
         userId: result.data.id,
-        email: result.data.email,
+        username: result.data.username,
         token: result.data.token
       })
       return null
@@ -62,12 +60,12 @@ const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true })
     try {
       const result = await POST_SIGNUP(data)
-      if (result.code !== 0) {
-        return result.message
+      if (!result.success) {
+        return result.msg
       }
       set({
         userId: result.data.id,
-        email: result.data.email,
+        username: result.data.username,
         token: result.data.token
       })
       return null
@@ -79,22 +77,8 @@ const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   async signOut() {
-    await POST_SIGNOUT()
-    set({ userId: null, email: null, token: null })
-  },
-
-  async deleteAccount() {
-    const userId = get().userId
-    if (!userId) {
-      return 'Not signed in'
-    }
-    set({ isLoading: true })
-    const result = await DELETE_ACCOUNT(userId)
-    set({ isLoading: false, userId: null, email: null, token: null })
-    if (result.code !== 0) {
-      return result.message
-    }
-    return null
+    await POST_SIGNOUT(get().token)
+    set({ userId: null, username: null, token: null })
   }
 }))
 

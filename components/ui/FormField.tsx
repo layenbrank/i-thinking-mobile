@@ -37,7 +37,9 @@ function FormField({
 
   return (
     <View className="gap-2">
-      <Text className="text-sm font-medium" style={{ color: colors.text }}>
+      <Text
+        className="text-sm font-medium"
+        style={{ color: colors.text }}>
         {label}
       </Text>
       <View
@@ -46,7 +48,13 @@ function FormField({
           backgroundColor: colors.surface,
           borderColor: error ? colors.destructive : colors.border
         }}>
-        {Icon ? <Icon size={18} color={colors.textSecondary} strokeWidth={1.75} /> : null}
+        {Icon ? (
+          <Icon
+            size={18}
+            color={colors.textSecondary}
+            strokeWidth={1.75}
+          />
+        ) : null}
         {children ?? (
           <TextInput
             accessibilityLabel={accessibilityLabel ?? label}
@@ -65,7 +73,9 @@ function FormField({
         )}
       </View>
       {error ? (
-        <Text className="text-sm" style={{ color: colors.destructive }}>
+        <Text
+          className="text-sm"
+          style={{ color: colors.destructive }}>
           {error}
         </Text>
       ) : null}

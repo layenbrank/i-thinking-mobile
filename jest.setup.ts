@@ -1,7 +1,13 @@
 import '@/i18n'
 
 jest.mock('expo-crypto', () => {
-  const nodeCrypto = require('crypto') as typeof import('crypto')
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- Jest runs on Node
+  const nodeCrypto = require('node:crypto') as {
+    randomBytes: (size: number) => Uint8Array
+    createHash: (algorithm: string) => {
+      update: (data: string) => { digest: (encoding: string) => string }
+    }
+  }
 
   return {
     CryptoDigestAlgorithm: {

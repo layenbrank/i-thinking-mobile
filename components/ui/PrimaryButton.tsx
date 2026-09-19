@@ -12,7 +12,14 @@ interface PrimaryButtonProps {
   accessibilityLabel?: string
 }
 
-function PrimaryButton({ label, onPress, icon: Icon, loading, disabled, accessibilityLabel }: PrimaryButtonProps) {
+function PrimaryButton({
+  label,
+  onPress,
+  icon: Icon,
+  loading,
+  disabled,
+  accessibilityLabel
+}: PrimaryButtonProps) {
   const colors = useThemeColors()
   const isDisabled = disabled || loading
 
@@ -29,7 +36,13 @@ function PrimaryButton({ label, onPress, icon: Icon, loading, disabled, accessib
         <ActivityIndicator color="#FFFFFF" />
       ) : (
         <>
-          {Icon ? <Icon size={18} color="#FFFFFF" strokeWidth={2} /> : null}
+          {Icon ? (
+            <Icon
+              size={18}
+              color="#FFFFFF"
+              strokeWidth={2}
+            />
+          ) : null}
           <Text className="text-base font-semibold text-white">{label}</Text>
         </>
       )}
@@ -53,7 +66,9 @@ function SecondaryButton({ label, onPress, accessibilityLabel }: SecondaryButton
       className="min-h-[48px] flex-row items-center justify-center rounded-xl border active:opacity-70"
       onPress={onPress}
       style={{ borderColor: colors.border, backgroundColor: colors.surface }}>
-      <Text className="text-base font-semibold" style={{ color: colors.tint }}>
+      <Text
+        className="text-base font-semibold"
+        style={{ color: colors.tint }}>
         {label}
       </Text>
     </Pressable>

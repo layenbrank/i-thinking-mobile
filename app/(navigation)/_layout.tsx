@@ -1,4 +1,4 @@
-import { BookOpen, CheckSquare, Settings, type LucideIcon } from 'lucide-react-native'
+import { Bot, LayoutGrid, Settings, type LucideIcon } from 'lucide-react-native'
 import { Tabs } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { Platform } from 'react-native'
@@ -12,7 +12,13 @@ interface NavIconProps {
 }
 
 function NavIcon({ icon: Icon, color, focused }: NavIconProps) {
-  return <Icon size={22} color={color} strokeWidth={focused ? 2.25 : 1.75} />
+  return (
+    <Icon
+      size={22}
+      color={color}
+      strokeWidth={focused ? 2.25 : 1.75}
+    />
+  )
 }
 
 export default function NavigationLayout() {
@@ -55,19 +61,29 @@ export default function NavigationLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: t('memos'),
+          title: t('tiles'),
           headerShown: false,
-          tabBarAccessibilityLabel: t('memos'),
-          tabBarIcon: ({ color, focused }) => <NavIcon icon={BookOpen} color={color} focused={focused} />
+          tabBarAccessibilityLabel: t('tiles'),
+          tabBarIcon: ({ color, focused }) => (
+            <NavIcon
+              icon={LayoutGrid}
+              color={color}
+              focused={focused}
+            />
+          )
         }}
       />
       <Tabs.Screen
-        name="list"
+        name="agent"
         options={{
-          title: t('checklist'),
-          tabBarAccessibilityLabel: t('checklist'),
+          title: t('agent'),
+          tabBarAccessibilityLabel: t('agent'),
           tabBarIcon: ({ color, focused }) => (
-            <NavIcon icon={CheckSquare} color={color} focused={focused} />
+            <NavIcon
+              icon={Bot}
+              color={color}
+              focused={focused}
+            />
           )
         }}
       />
@@ -76,7 +92,13 @@ export default function NavigationLayout() {
         options={{
           title: t('settings'),
           tabBarAccessibilityLabel: t('settings'),
-          tabBarIcon: ({ color, focused }) => <NavIcon icon={Settings} color={color} focused={focused} />
+          tabBarIcon: ({ color, focused }) => (
+            <NavIcon
+              icon={Settings}
+              color={color}
+              focused={focused}
+            />
+          )
         }}
       />
     </Tabs>
