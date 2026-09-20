@@ -82,14 +82,22 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
     headers['X-Tenant-ID'] = options.tenantId
   }
 
-  const response = await fetch(buildUrl(path), {
-    method: options.method ?? 'GET',
-    headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    signal: options.signal
-  })
-
-  return parseEnvelope<T>(response)
+  const url = buildUrl(path)
+  try {
+    const response = await fetch(url, {
+      method: options.method ?? 'GET',
+      headers,
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: options.signal
+    })
+    return await parseEnvelope<T>(response)
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error
+    }
+    const detail = error instanceof Error ? error.message : 'Network request failed'
+    throw new ApiError(0, `Could not reach rust-service (${findApiBaseUrl()}): ${detail}`)
+  }
 }
 
 /**
