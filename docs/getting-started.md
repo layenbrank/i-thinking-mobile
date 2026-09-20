@@ -22,7 +22,7 @@ pnpm run dev
 
 ```text
 POST /api/v1/auth/captcha
-  → 滑块得到 captchaKey + captchaValue("x,y")
+  → 滑块得到 captchaKey + captchaValue("x,y")  # 主图像素坐标，非屏幕像素
 POST /api/v1/auth/signin | /signup
   → data.token (JWT)
 GET  /api/v1/auth/profile   # hydrate 校验
@@ -32,6 +32,13 @@ POST /api/v1/auth/signout   # Redis 黑名单
 Body 字段均为 camelCase：`username`、`password`、`captchaKey`、`captchaValue`、`captchaKind`。
 
 成功信封：`code === 200000`。
+
+### 联调注意
+
+1. rust-service 需绑定 `0.0.0.0:3000`（见其 `config.yaml`）
+2. `POST /captcha` 依赖 go-captcha 侧车；仅 `auth.captcha.enabled: false` 时会跳过 **校验**，取题仍要侧车
+3. 真机上 `127.0.0.1` 指向手机自身；本仓库会把 loopback 配置改写成 Metro 的局域网 IP
+4. iOS 已开启 `NSAllowsLocalNetworking`，Android 开启 `usesCleartextTraffic`，允许开发期 HTTP
 
 ## Agent 链路
 
@@ -44,9 +51,10 @@ POST /api/v1/gateway/chat/completions  # stream: true，XHR progressive
 
 ## 配置
 
-`app.json` → `expo.extra.apiBaseUrl` 或：
+`app.json` → `expo.extra.apiBaseUrl`（可写 `http://127.0.0.1:3000`，客户端按平台改写），或：
 
 ```bash
-export EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:3000
+# 显式指定电脑局域网 IP（不会被改写）
+export EXPO_PUBLIC_API_BASE_URL=http://192.168.1.8:3000
 pnpm run dev
 ```

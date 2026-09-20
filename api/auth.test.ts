@@ -63,7 +63,7 @@ describe('rust-service auth api', () => {
       username: 'alice',
       password: 'secret1',
       captchaKey: 'k',
-      captchaValue: '10,12',
+      captchaValue: '120,80',
       captchaKind: 'slide-default'
     })
 
@@ -77,7 +77,7 @@ describe('rust-service auth api', () => {
       username: 'alice',
       password: 'secret1',
       captchaKey: 'k',
-      captchaValue: '10,12',
+      captchaValue: '120,80',
       captchaKind: 'slide-default'
     })
   })
@@ -106,7 +106,7 @@ describe('rust-service auth api', () => {
       username: 'bob',
       password: 'secret1',
       captchaKey: 'k',
-      captchaValue: '1,2'
+      captchaValue: '120,80'
     })
 
     expect(result.success).toBe(true)

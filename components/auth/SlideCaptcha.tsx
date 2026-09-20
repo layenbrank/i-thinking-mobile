@@ -20,11 +20,26 @@ interface SlideCaptchaModalProps {
   onFinish: (proof: SlideProof | null) => void
 }
 
+/** go-captcha slide-default master canvas (see rust-service docker/gocaptcha). */
+const MASTER_WIDTH = 300
+const MASTER_HEIGHT = 220
+
 /**
- * Formats slide proof as rust-service expects: "x,y".
+ * Formats slide proof as go-captcha check-data expects: "x,y" in master-image pixels.
+ * Passing only x makes the sidecar treat y as 0 and fail a correct puzzle.
  */
 function formatSlideValue(x: number, y: number) {
   return `${Math.round(x)},${Math.round(y)}`
+}
+
+/**
+ * Converts a display-space X offset back to master-image coordinates.
+ */
+function toMasterX(displayX: number, displayWidth: number) {
+  if (displayWidth <= 0) {
+    return displayX
+  }
+  return (displayX * MASTER_WIDTH) / displayWidth
 }
 
 function toDataUri(base64: string) {
@@ -50,8 +65,10 @@ function SlideCaptchaModal({ open, onFinish }: SlideCaptchaModalProps) {
   const [epoch, setEpoch] = useState(0)
   const settled = useRef(false)
   const offsetRef = useRef(0)
-  const trackWidth = Math.min(320, windowWidth - 48)
-  const imageWidth = trackWidth
+  const imageWidth = Math.min(MASTER_WIDTH, windowWidth - 48)
+  const imageHeight = (MASTER_HEIGHT * imageWidth) / MASTER_WIDTH
+  const scale = imageWidth / MASTER_WIDTH
+  const trackWidth = imageWidth
 
   const finish = useCallback(
     function (proof: SlideProof | null) {
@@ -101,9 +118,9 @@ function SlideCaptchaModal({ open, onFinish }: SlideCaptchaModalProps) {
       if (!challenge) {
         return trackWidth - 48
       }
-      return Math.max(8, imageWidth - challenge.thumbWidth)
+      return Math.max(8, imageWidth - challenge.thumbWidth * scale)
     },
-    [challenge, imageWidth, trackWidth]
+    [challenge, imageWidth, scale, trackWidth]
   )
 
   const panResponder = useMemo(
@@ -122,13 +139,16 @@ function SlideCaptchaModal({ open, onFinish }: SlideCaptchaModalProps) {
           }
           finish({
             captchaKey: challenge.captchaKey,
-            captchaValue: formatSlideValue(offsetRef.current, challenge.thumbY),
+            captchaValue: formatSlideValue(
+              toMasterX(offsetRef.current, imageWidth),
+              challenge.thumbY
+            ),
             captchaKind: challenge.kind
           })
         }
       })
     },
-    [challenge, finish, maxOffset]
+    [challenge, finish, imageWidth, maxOffset]
   )
 
   return (
@@ -176,25 +196,25 @@ function SlideCaptchaModal({ open, onFinish }: SlideCaptchaModalProps) {
               <View
                 style={{
                   width: imageWidth,
-                  height: 160,
+                  height: imageHeight,
                   overflow: 'hidden',
                   borderRadius: 12,
                   backgroundColor: colors.background
                 }}>
                 <Image
-                  resizeMode="cover"
+                  resizeMode="stretch"
                   source={{ uri: toDataUri(challenge.masterImage) }}
-                  style={{ width: imageWidth, height: 160 }}
+                  style={{ width: imageWidth, height: imageHeight }}
                 />
                 <Image
-                  resizeMode="contain"
+                  resizeMode="stretch"
                   source={{ uri: toDataUri(challenge.thumbImage) }}
                   style={{
                     position: 'absolute',
                     left: offsetX,
-                    top: challenge.thumbY,
-                    width: challenge.thumbWidth,
-                    height: challenge.thumbHeight
+                    top: challenge.thumbY * scale,
+                    width: challenge.thumbWidth * scale,
+                    height: challenge.thumbHeight * scale
                   }}
                 />
               </View>
@@ -273,4 +293,4 @@ function useSlideProof() {
   return { askSlide, dialog }
 }
 
-export { SlideCaptchaModal, formatSlideValue, useSlideProof }
+export { SlideCaptchaModal, formatSlideValue, toMasterX, useSlideProof }
